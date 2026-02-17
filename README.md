@@ -1,0 +1,3 @@
+# springNAll
+
+a repo which contains all the java dev related notes, code snippets and many more...
