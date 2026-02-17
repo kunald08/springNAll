@@ -1,0 +1,122 @@
+QC-01
+=======
+- Agile
+- Linux
+- Shell Scripting
+- HTML/CSS
+- Bootstrap
+- JavaScript
+- jQuery/Ajax
+============================
+
+Introduction to Agile
+Agile Manifesto
+Scrum Framework
+Sprint Planning
+Agile User Stories
+Story Pointing
+Agile Estimation and Planning
+Agile Metrics and Reporting
+SDLC vs Agile
+Software Support and Maintenance
+
+Basic Linux commands
+File Management
+Directory Management
+File Permissions/Access Modes
+Basic Utilities
+Pipes and Filters
+Process Management
+Network Communication Utilities
+
+Introduction to Shell Scripting
+Basic Shell Scripting Concepts
+Control Structures
+Command-Line Arguments
+Functions
+Text Processing
+Error Handling and Debugging
+
+Source Control Management
+Working Locally with Git
+Git Fundamentals
+Initializing a Repository
+Git Commit, Branch, Merge
+Working remotely with Git
+Branching, Merging, and Rebasing
+
+Getting started
+HTML Document Structure
+HTML5 New Features
+Elements & Attributes
+Headings, Paragraphs and Links
+Images, Lists, Tables
+Div and Span
+Navigation
+Semantic Elements
+Header, nav, footer, article, section
+Web Forms 2.0
+Form Elements & Input Types
+Form Validation
+Events
+Web Storage
+LocalStorage, sessionStorage
+Web SQL Database
+Geolocation
+CSS Syntax
+Ways to Apply CSS
+CSS Selectors
+Styling Text and Fonts
+Font Properties
+Box Model Basics
+Content, Padding, Border, Margin
+Colors and Backgrounds
+Colors, Borders and Effects
+Layout with CSS
+Display, Position, Float
+Flexbox Layout
+Flex-direction, justify-content
+Grid-template-columns/rows
+CSS Grid Layout
+Responsive Design
+Media Queries, Breakpoints
+Transitions, Animations, Transform
+
+Getting Started
+JavaScript Fundamentals
+Variables (var, let, const)
+Data Types
+JavaScript Operators
+this Keyword
+JavaScript Arrays
+Array Methods
+forEach, map, filter, reduce
+Object Creation, Properties, Methods
+Selecting Elements
+Modifying Content
+Event Handling
+if-else, switch, Loops
+Control Flow
+Function Declaration, Arrow Functions
+Promises, async/await
+Fetch API
+Callbacks, Closures, IIFE
+
+Introduction to Bootstrap 5
+Bootstrap Setup (CDN)
+Layout and Grid System
+Container, Row, Column
+Responsive Breakpoints
+Essential Components
+Typography, Buttons, Cards, Forms
+Navbar, Modals, Dropdowns
+Bootstrap Utilities and Helpers
+Responsive Design with Bootstrap
+Customization and Extensions
+
+What is jQuery?
+jQuery Selectors
+DOM manipulation & events
+jQuery Effects
+Basic AJAX with jQuery
+
