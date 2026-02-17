@@ -1,0 +1,229 @@
+QC-2
+========================
+MySQL
+Java
+JUnit
+
+************************************[Oracle]****************************************************************************************************************
+
+Introduction to RDBMS
+SQL vs NoSQL
+Data Types
+Structuring Data
+CREATE, ALTER, DROP, TRUNCATE
+Constraints
+PRIMARY KEY, FOREIGN KEY
+UNIQUE, NOT NULL, CHECK, DEFAULT
+DML (Data Manipulation Language)
+INSERT, UPDATE, DELETE
+Querying data
+SELECT Statement
+WHERE Clause
+Sorting data (ORDER BY)
+Filtering data
+DISTINCT, LIKE, Wildcards
+IN, BETWEEN Operators
+IS NULL, IS NOT NULL
+AND, OR, NOT
+Aggregate Function
+String Functions
+Date Functions, Numeric Functions
+Conversion Functions
+Grouping data
+GROUP BY, HAVING
+GROUP BY with Multiple Columns
+INNER JOIN
+LEFT JOIN, RIGHT JOIN
+FULL OUTER JOIN
+CROSS JOIN, Self Join
+Multiple Joins
+Subquery
+Single-row, Multi-row Subqueries
+Correlated Subqueries
+Modifying data
+UNION, UNION ALL, INTERSECT, MINUS
+Database Views
+Creating, Updating, Dropping Views
+PL/SQL Block Structure
+%TYPE and %ROWTYPE
+Control Structures in PL/SQL
+IF-THEN-ELSE, CASE
+LOOP, WHILE, FOR
+Creating Procedures
+IN, OUT, IN OUT Parameters
+Creating Functions
+RETURN Statement
+Package Specification, Package Body
+Trigger Timing, Trigger Events
+Predefined Exceptions
+User-defined Exceptions
+Cursors
+Implicit Cursors, Explicit Cursors
+Cursor FOR Loops
+Parameterized Cursors, REF Cursors
+EXECUTE IMMEDIATE
+Error Handling and Logging
+Bulk Processing
+BULK COLLECT, FORALL
+
+***********************************[JSE+JUnit]**************************************************************************************************************
+What Is Java
+Jvm Jre Jdk
+Setup Jdk
+Set Up Ide Intellij
+Primitive Data Types
+Reference Variables
+Control Flow Conditional Statements
+Logical Operators
+Mathematical Operators
+Comparison Operators
+Arrays
+Control Flow Loops
+Commenting
+Packages And Imports
+Debugging
+Method Declaration And Syntax
+Method Parameters And Return Types
+Method Invocation
+Method Visibility Modifiers
+Method Scope
+Introduction To The Stack
+Method Recursion
+Casting
+Value And Reference Types
+String Basics
+Wrapper Classes
+Introduction To Oop
+Classes Vs Objects
+Classes Members
+Static Members
+Oop Inheritance
+Interfaces And Abstract Class
+Oop Polymorphism
+Overloading
+Overriding
+Oop Encapsulation
+Oop Abstraction
+Object Class
+Non Access Modifiers
+Equality Hashcode Equals
+Garbage Collection
+Exceptions Vs Errors And Hierarchy
+Handling Exceptions
+Checked Vs Unchecked Exceptions
+Creating Custom Exceptions
+Reading The Stack Trace
+Overview Of Collections Hierarchy
+List Interface & Implementation Classes
+Set Interface & Implementation Classes
+Queue Interface & Implementation Classes
+Iterators
+Map Interface & Implementation Classes
+lambdas
+method-reference-syntax
+multithreading
+states-of-a-thread
+runnable-interface
+thread-class
+synchronization
+deadlock
+livelock
+producer-consumer-problem
+Optional-class
+functional-interfaces
+reading-and-writing-to-files
+Date and Time API
+reflection - API
+Stream API
+SOLID Principles
+Singleton Pattern
+Factory Pattern
+Factory Pattern
+Behavioral Pattern
+Structural Pattern
+Introduction to UML
+UML Diagram Types
+UML Diagram Elements
+Sealed Classes, Pattern Matching
+Text Blocks, Records, Virtual Threads
+Jdbc Architecture And Interfaces
+Driver Types And Registration
+Setting Up The Database Driver
+Setting Up The Utility Class
+Sql Injection
+Callable Statements
+Result Set
+Navigating Result Set Rows
+Simple And Prepared Statements
+Reactive Manifesto, Reactive Streams
+Reactive Programming in Java
+Building Reactive Applications
+Java Networking
+Socket Programming
+java.net.ServerSocket
+Implementing Socket Client in Java
+Introduction to Debugging
+Getting Started with IntelliJ IDEA Debugger
+Basic Debugging Techniques : Setting Breakpoints , Step Over, Step Into, Step Out
+Advanced Debugging Techniques : Watch Variables, Debug Console
+Goals and its Objectives
+Steps of Reverse Engineering
+Tools of Reverse Engineering
+Red-Green-Refactor Cycle
+TDD Principles
+What is Unit Testing
+Introduction to JUnit
+JUnit 5 Architecture
+JUnit Annotations
+JUnit Test Structure
+Assertions
+Test Lifecycle
+Parameterized Tests
+@ValueSource, @CsvSource
+Test Suites
+Nested Tests
+Dynamic Tests
+Assumptions
+Timeouts and Exceptions
+What is Mocking
+Mock vs Stub vs Spy
+Creating Mocks
+Stubbing Methods
+when().thenReturn()
+Stubbing and Verification
+Argument Matchers
+verify(), Verification Modes
+Spies (@Spy)
+Argument Captors
+Log4J 2 Architecture
+Log4J Configuration
+Appenders (Console, File, Rolling File)
+Layouts (Pattern Layout)
+SLF4J API
+Logger Factory
+Best Practices for Logging
+
+Static Code Analysis
+PMD Rules and Rulesets
+PMD Configuration
+Code Style CHecking
+Checkstyle Configuration
+Checkstyle Rules
+Code Quality Metrics
+Technical Debt
+Code Smells
+SonarQube Dashboard
+Quality Gates
+SonarQube Integration
+Code Coverage Analysis
+JaCoCo Reports
+Integration with Maven
+Coverage Metrics (Line, Branch, Instruction)
+Bug Detection
+SpotBugs Annotations
+Common Bug Patterns
+Peer Review
+Code Review Checklist
+Pull Request Best Practices
+Continuous Integration Basics
+Binding with Log4J
