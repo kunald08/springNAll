@@ -1,0 +1,130 @@
+QC-03
+========
+Spring
+Spring Boot
+
+
+=====================
+Intro to Spring
+@Component, @Service
+Spring Core
+Spring Modules
+Core, AOP, Data, MVC, Security
+Spring Container
+ApplicationContext, BeanFactory
+IoC (Inversion of Control)
+Constructor Injection
+Setter Injection
+Field Injection
+
+@Autowired Annotation
+@Qualifier Annotation
+@Primary Annotation
+Annotation Configuration
+Java Configuration
+
+@Configuration, @Bean
+@Repository, @Controller
+Singleton, Prototype
+Request, Session, Application
+Initialization and Destruction
+@PostConstruct and @PreDestroy
+
+@PropertySource
+@Value Annotation
+Application Properties
+Introduction to SpEL
+Literal Expressions , Variables and References
+SpEL with @Value, SpEL in XML Configuration , SpEL in Annotations
+Jbdc Template
+NamedParameterJdbcTemplate
+RowMapper
+
+@Transactional Annotation
+Transaction Propagation
+Maven Project Structure
+POM(Project Object Model)
+Build Lifecycle
+Plugings
+Running Maven Builds
+
+What is ORM
+Advantages of ORM
+Introduction to JPA
+JPA vs Hibernate
+Spring Data Repository
+CrudRepository
+JpaRepository
+@Entity, @Table
+@Id, @GeneratedValue
+@Column
+@OneToOne
+@OneToMany
+@ManyToOne
+@ManyToMany
+
+ALL, PERSIST, MERGE, REMOVE
+Fetch Types
+LAZY, EAGER
+@JoinColumn
+@JoinTable
+Persisting objects into database
+Transient, Persistent States
+Detached Objects
+Removed States
+Persistent,Merge,Remove,Find
+
+JPQL Syntax
+Named Queries
+Custom Query Methods
+@Query Annotation
+Native Queries
+Specifications
+Advanced JPA
+Pagination and Sorting
+Projections
+Auditing
+Caching, Transaction Management
+
+What is Spring Boot
+Spring Initializr (start.spring.io)
+Project Structure
+Auto-configuration
+Starter Dependencies
+@SpringBootApplication
+Application Properties
+Profile Management
+
+MVC Architecture
+Spring Boot and Spring MVC Integration
+Controllers
+@Controller ,@RestController
+@RequestMapping
+@GetMapping, @PostMapping
+@PutMapping, @DeleteMapping
+@PathVariable, @RequestParam
+@RequestBody, @ResponseBody
+Introduction to Thymeleaf
+Thymeleaf Configuration
+Thymeleaf Syntax and Expressions
+Thymeleaf Attributes (th:text, th:each, th:if)
+Thymeleaf Layouts and Fragments
+Handling Form Submissions
+
+REST Principles
+HTTP Methods
+GET, POST, PUT, DELETE, PATCH
+HTTP Status Codes
+200, 201, 400, 404, 500
+ResponseEntity
+Data Access with Spring Boot
+
+@ExceptionHandler
+@ControllerAdvice
+Validation (@Valid, @NotNull)
+Authentication vs Authorization
+UserDetailsService
+
+@SpringBootTest
+Microservices Basics
+Building Blocks, Data Management
