@@ -746,5 +746,107 @@ void testMultipleAssertions() {
 
 ---
 
+## 14. Test Naming Conventions
+
+Good test names are like mini-documentation — anyone reading the test name should immediately understand WHAT is being tested, UNDER WHAT conditions, and WHAT should happen.
+
+### Popular Naming Patterns
+
+```java
+// Pattern 1: should_ExpectedResult_When_Condition (most popular)
+@Test
+void should_ReturnTrue_When_UserIsAdmin() { ... }
+
+@Test
+void should_ThrowException_When_BalanceIsNegative() { ... }
+
+@Test
+void should_SendEmail_When_OrderIsPlaced() { ... }
+
+// Pattern 2: methodName_input_expectedResult
+@Test
+void withdraw_AmountGreaterThanBalance_ThrowsException() { ... }
+
+@Test
+void login_ValidCredentials_ReturnsAuthToken() { ... }
+
+// Pattern 3: givenX_whenY_thenZ (BDD style)
+@Test
+void givenInvalidEmail_whenRegister_thenThrowsValidationException() { ... }
+
+@Test
+void givenEmptyCart_whenCheckout_thenReturnError() { ... }
+
+// Pattern 4: Use @DisplayName for human-readable names
+@Test
+@DisplayName("User with admin role should have access to settings page")
+void adminAccessTest() { ... }
+
+@Test
+@DisplayName("Withdrawing more than balance should throw InsufficientFundsException")
+void overdraftTest() { ... }
+```
+
+### Test Naming Do's and Don'ts
+
+```
+✅ DO:
+  - Make the test name describe the BEHAVIOR, not the implementation
+  - Include the expected outcome in the name
+  - Use @DisplayName for complex scenarios (it shows up in test reports!)
+
+❌ DON'T:
+  - Name tests "test1", "test2", "testMethod" (tells you nothing!)
+  - Use vague names like "testLogin" (login what? Success? Failure?)
+  - Make names too long (keep under ~60 chars if possible)
+```
+
+---
+
+## 15. The Bridge to Mockito
+
+### When JUnit Alone Isn't Enough
+
+JUnit is great for testing code that works independently. But most real-world code has **dependencies** — it calls a database, sends emails, or talks to external APIs. You don't want your tests to actually send emails or hit a real database!
+
+```java
+// This class depends on EmailService and UserRepository:
+public class UserService {
+    private UserRepository userRepo;
+    private EmailService emailService;
+    
+    public void registerUser(String name, String email) {
+        User user = new User(name, email);
+        userRepo.save(user);              // Talks to database!
+        emailService.sendWelcome(email);  // Sends a real email!
+    }
+}
+```
+
+**Problem:** How do you test `registerUser()` without:
+- Setting up a real database?
+- Actually sending emails?
+- Your test depending on network connectivity?
+
+**Answer: Mockito!** It creates **fake versions** (mocks) of your dependencies that you can control in your tests. The next file covers this in detail!
+
+```java
+// Preview of what Mockito lets you do (explained fully in 10-Mockito-Mocking.md):
+@Mock UserRepository userRepo;       // Fake database
+@Mock EmailService emailService;     // Fake email service
+@InjectMocks UserService userService; // Real class, but with fake dependencies
+
+@Test
+void should_SaveUser_When_Registering() {
+    userService.registerUser("Kunal", "kunal@email.com");
+    
+    verify(userRepo).save(any(User.class));       // Did it try to save?
+    verify(emailService).sendWelcome("kunal@email.com"); // Did it send email?
+    // No real database or email involved! ✅
+}
+```
+
+---
+
 *Previous: [08-Design-Patterns-SOLID.md](08-Design-Patterns-SOLID.md)*
 *Next: [10-Mockito-Mocking.md](10-Mockito-Mocking.md)*

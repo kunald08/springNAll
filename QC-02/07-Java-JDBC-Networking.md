@@ -565,6 +565,176 @@ conn.commit();                   // Commit whatever wasn't rolled back
 
 ---
 
+## 11a. Connection Pooling — Why Creating Connections Every Time is a Bad Idea
+
+### The Problem
+
+Every time you call `DriverManager.getConnection()`, Java has to:
+1. Open a network connection to the database server (TCP handshake)
+2. Authenticate (send username/password, wait for verification)
+3. Allocate resources on the database side
+
+This takes **50-200 milliseconds** each time. If your web app gets 1000 requests/second and each request creates a new connection... that's 1000 TCP handshakes per second. **Extremely slow and wasteful.**
+
+```
+Without Connection Pooling (BAD):
+
+Request 1 → Create connection → Execute query → Close connection  (200ms overhead!)
+Request 2 → Create connection → Execute query → Close connection  (200ms overhead!)
+Request 3 → Create connection → Execute query → Close connection  (200ms overhead!)
+...
+Each request pays the "connection creation tax" every single time.
+
+With Connection Pooling (GOOD):
+
+App starts → Create 10 connections upfront and keep them ready
+│
+Request 1 → Borrow connection → Execute query → Return connection  (0ms overhead!)
+Request 2 → Borrow connection → Execute query → Return connection  (0ms overhead!)
+Request 3 → Borrow connection → Execute query → Return connection  (0ms overhead!)
+│
+Connections are REUSED, not re-created!
+```
+
+### What is a Connection Pool?
+
+Think of it like a **library of database connections**. Instead of buying a new book every time you want to read (creating a new connection), you borrow one from the library (the pool), read it, and return it so someone else can use it.
+
+### DataSource — The Proper Way to Get Connections
+
+Instead of using `DriverManager.getConnection()` directly, production applications use a **DataSource** — an interface that provides connections, usually from a pool.
+
+```java
+// ❌ Old way (DON'T do this in production):
+Connection conn = DriverManager.getConnection(url, user, pass);
+// Creates a brand new connection every time. Slow.
+
+// ✅ New way (use a DataSource from a connection pool):
+DataSource dataSource = createPool();  // Set up once at app startup
+Connection conn = dataSource.getConnection();  // Fast! Gets a pre-made connection
+// ... use conn ...
+conn.close();  // Doesn't actually close! Returns it to the pool for reuse!
+```
+
+### HikariCP — The Fastest Java Connection Pool
+
+**HikariCP** is the most popular and fastest connection pool for Java. It's what Spring Boot uses by default!
+
+```xml
+<!-- Maven dependency -->
+<dependency>
+    <groupId>com.zaxxer</groupId>
+    <artifactId>HikariCP</artifactId>
+    <version>5.1.0</version>
+</dependency>
+```
+
+```java
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+
+// Configure the pool (do this ONCE at application startup)
+HikariConfig config = new HikariConfig();
+config.setJdbcUrl("jdbc:oracle:thin:@localhost:1521:xe");
+config.setUsername("hr");
+config.setPassword("password");
+config.setMaximumPoolSize(10);       // At most 10 connections in the pool
+config.setMinimumIdle(5);            // Keep at least 5 ready
+config.setConnectionTimeout(30000);  // Wait max 30 seconds for a connection
+config.setIdleTimeout(600000);       // Close idle connections after 10 minutes
+config.setMaxLifetime(1800000);      // Replace connections after 30 minutes
+
+HikariDataSource dataSource = new HikariDataSource(config);
+
+// Now use it throughout your application:
+try (Connection conn = dataSource.getConnection()) {
+    // This connection came from the pool — fast!
+    PreparedStatement ps = conn.prepareStatement("SELECT * FROM employees");
+    ResultSet rs = ps.executeQuery();
+    while (rs.next()) {
+        System.out.println(rs.getString("first_name"));
+    }
+}
+// conn.close() returns the connection to the pool, NOT actually closed!
+```
+
+```
+Connection Pool lifecycle:
+
+                    ┌──────────────────────┐
+                    │   Connection Pool    │
+                    │  (HikariCP)          │
+                    │                      │
+                    │  [Conn1] [Conn2]     │  ← Idle connections (waiting)
+                    │  [Conn3] [Conn4]     │
+                    │  [Conn5]             │
+App starts ────────►│                      │
+                    └──────────┬───────────┘
+                               │
+Request comes ────► getConnection() ──► Borrows Conn1
+                                        │
+                    Use Conn1 for query  │
+                                        │
+                    conn.close() ───────► Returns Conn1 to pool
+                                        │
+                    Conn1 is idle again  ◄┘  Ready for next request!
+```
+
+---
+
+## 11b. Batch Processing — Running Many SQL Statements at Once
+
+### The Problem
+
+If you need to insert 10,000 rows, doing them one by one means 10,000 round-trips to the database. Each trip has network overhead. **Batch processing** lets you bundle many operations into a single trip.
+
+```
+Without batching (10,000 individual trips):
+  App → DB: INSERT row 1    (1 round-trip)
+  App → DB: INSERT row 2    (1 round-trip)
+  App → DB: INSERT row 3    (1 round-trip)
+  ... 9,997 more ...
+  Total: 10,000 round-trips. SLOW!
+
+With batching (1 trip with all 10,000):
+  App → DB: INSERT rows 1-10,000  (1 round-trip)
+  Total: 1 round-trip. FAST!
+```
+
+```java
+Connection conn = dataSource.getConnection();
+conn.setAutoCommit(false);  // Important: batch within a transaction!
+
+PreparedStatement ps = conn.prepareStatement(
+    "INSERT INTO employees (id, name, salary) VALUES (?, ?, ?)"
+);
+
+for (int i = 1; i <= 10000; i++) {
+    ps.setInt(1, i);
+    ps.setString(2, "Employee_" + i);
+    ps.setDouble(3, 50000 + (i * 10));
+    
+    ps.addBatch();  // ← Add to the batch (doesn't execute yet!)
+    
+    // Execute in chunks of 500 to avoid memory issues
+    if (i % 500 == 0) {
+        ps.executeBatch();  // ← Send this chunk to the database
+        ps.clearBatch();    // ← Clear the batch for next chunk
+    }
+}
+
+ps.executeBatch();   // Execute remaining rows (if any)
+conn.commit();       // Commit everything
+ps.close();
+conn.close();
+
+// Performance comparison:
+// Without batching: ~45 seconds for 10,000 rows
+// With batching:    ~0.5 seconds for 10,000 rows   ← 90x faster!
+```
+
+---
+
 ## 11. Java Networking & Sockets
 
 ### Networking Basics

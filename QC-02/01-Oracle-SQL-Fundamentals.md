@@ -1209,6 +1209,249 @@ WITH READ ONLY;
 
 ---
 
+---
+
+## 17. Indexes — Making Queries Faster
+
+### What is an Index?
+
+Think of a book's index at the back — instead of reading every page to find "recursion," you flip to the index, find "recursion — page 342," and go straight there. **A database index works the same way.** Without an index, Oracle has to scan every single row in the table (called a **full table scan**). With an index, Oracle can jump straight to the rows it needs.
+
+```
+WITHOUT an index (Full Table Scan):
+┌──────────────────────────────────────────┐
+│  Row 1 → check... no                     │
+│  Row 2 → check... no                     │
+│  Row 3 → check... no                     │
+│  ...                                     │
+│  Row 999,999 → check... no               │
+│  Row 1,000,000 → check... YES! Found it  │
+└──────────────────────────────────────────┘
+Checked ALL 1,000,000 rows. Slow!
+
+WITH an index (Index Lookup):
+┌─────────────────────────────┐
+│  Index says: "Row 1,000,000"│ → Jump straight there!
+└─────────────────────────────┘
+Checked only a few index entries. Fast!
+```
+
+### How Indexes Work (Under the Hood)
+
+Oracle uses a **B-Tree** (Balanced Tree) structure for most indexes. Picture a tree where:
+- The **root node** is at the top (like a table of contents).
+- **Branch nodes** narrow down the search (like chapters, then sections).
+- **Leaf nodes** at the bottom point to the actual rows.
+
+```
+          ┌─────────────┐
+          │   Root: M    │        ← Start here
+          └──────┬───────┘
+        ┌────────┴────────┐
+   ┌────┴────┐       ┌────┴────┐
+   │ A - L   │       │ N - Z   │  ← Branch nodes
+   └────┬────┘       └────┬────┘
+   ┌────┴────┐       ┌────┴────┐
+   │Leaf:    │       │Leaf:    │  ← Leaf nodes (point to actual rows)
+   │A→row3   │       │N→row1   │
+   │B→row7   │       │P→row5   │
+   │D→row2   │       │Z→row8   │
+   └─────────┘       └─────────┘
+```
+
+Looking for "P"?  Root says "go right" → Branch says "N-Z" → Leaf says "row 5" → Done! Only 3 steps instead of scanning all rows.
+
+### Creating Indexes
+
+```sql
+-- Basic index on a single column
+CREATE INDEX idx_emp_name ON employees(last_name);
+
+-- Composite index (multiple columns)
+-- Useful when you often search by BOTH columns together
+CREATE INDEX idx_emp_dept_salary ON employees(department_id, salary);
+
+-- Unique index (no duplicate values allowed)
+-- Oracle automatically creates this when you add a PRIMARY KEY or UNIQUE constraint
+CREATE UNIQUE INDEX idx_emp_email ON employees(email);
+
+-- Drop an index you no longer need
+DROP INDEX idx_emp_name;
+```
+
+### When Should You Create an Index?
+
+```
+✅ DO create indexes when:
+  - The column is used frequently in WHERE clauses
+  - The column is used in JOIN conditions
+  - The column has many different values (high cardinality)
+    Example: email, employee_id → GOOD candidates
+  - The table is large (thousands+ rows)
+
+❌ DON'T create indexes when:
+  - The table is small (Oracle can scan it faster than using an index)
+  - The column has few unique values (low cardinality)
+    Example: gender (M/F) → BAD candidate (only 2 values)
+  - The table gets lots of INSERT/UPDATE/DELETE
+    (Indexes slow down writes because Oracle must update the index too)
+  - You'd end up with too many indexes on one table
+    (Each index takes up disk space and slows down writes)
+```
+
+### Bitmap Index (Special Case)
+
+For columns with **very few distinct values** (like status, gender, yes/no), Oracle offers **bitmap indexes**:
+
+```sql
+-- Good for columns like status that have only a few possible values
+CREATE BITMAP INDEX idx_order_status ON orders(status);
+-- status values: 'PENDING', 'SHIPPED', 'DELIVERED', 'CANCELLED'
+```
+
+A bitmap index stores a string of 1s and 0s for each value — like a checklist of which rows have that value. It's very compact and excellent for analytical queries that filter on these low-cardinality columns.
+
+---
+
+## 18. Sequences — Auto-Generating Unique Numbers
+
+### What is a Sequence?
+
+A **sequence** is a database object that generates unique numbers automatically. Think of it like a "take a number" dispenser at a deli counter — each time you pull, you get the next number in line, and no two people ever get the same number.
+
+This is super useful for generating **primary key values** so you don't have to figure out "what's the next ID?" yourself.
+
+```sql
+-- Create a sequence
+CREATE SEQUENCE emp_seq
+  START WITH 1       -- First number generated will be 1
+  INCREMENT BY 1     -- Each call gives the next number (+1)
+  MINVALUE 1         -- Never go below 1
+  MAXVALUE 999999    -- Maximum value
+  NOCACHE;           -- Don't pre-generate numbers (CACHE 20 is faster but can skip numbers)
+
+-- Use the sequence — two important pseudocolumns:
+-- NEXTVAL → gives you the NEXT number (and advances the counter)
+-- CURRVAL → gives you the CURRENT number (last NEXTVAL you called)
+
+INSERT INTO employees (employee_id, name, salary)
+VALUES (emp_seq.NEXTVAL, 'Kunal', 60000);
+
+INSERT INTO employees (employee_id, name, salary)
+VALUES (emp_seq.NEXTVAL, 'Priya', 55000);
+
+-- Check what number we're on
+SELECT emp_seq.CURRVAL FROM dual;  -- Shows the last number generated
+
+-- Drop a sequence
+DROP SEQUENCE emp_seq;
+```
+
+### Sequence vs. IDENTITY Column (Oracle 12c+)
+
+Starting from Oracle 12c, you can use **IDENTITY columns** — which are basically sequences built into the table definition. Simpler to use:
+
+```sql
+-- Old way (explicit sequence):
+CREATE SEQUENCE emp_seq START WITH 1 INCREMENT BY 1;
+INSERT INTO employees(id, name) VALUES (emp_seq.NEXTVAL, 'Kunal');
+
+-- New way (identity column — Oracle 12c+):
+CREATE TABLE employees (
+  id NUMBER GENERATED ALWAYS AS IDENTITY,  -- Auto-generates! No sequence needed.
+  name VARCHAR2(100)
+);
+INSERT INTO employees(name) VALUES ('Kunal');  -- id is auto-assigned!
+```
+
+---
+
+## 19. DCL — Data Control Language (GRANT & REVOKE)
+
+### What is DCL?
+
+DCL is about **security** — who is allowed to do what in the database. Just like how in a company, not everyone has access to the finance files, in a database, not every user should be able to delete tables or read salary data.
+
+There are two DCL commands:
+- **GRANT** — give someone permission to do something
+- **REVOKE** — take that permission away
+
+### System Privileges vs. Object Privileges
+
+```
+System Privileges — permission to do something IN GENERAL:
+  CREATE TABLE      → allowed to create tables
+  CREATE SESSION    → allowed to log in to the database
+  CREATE VIEW       → allowed to create views
+  DROP ANY TABLE    → allowed to drop anyone's tables (powerful!)
+
+Object Privileges — permission to do something TO A SPECIFIC OBJECT:
+  SELECT ON employees → allowed to read the employees table
+  INSERT ON employees → allowed to add rows to employees
+  UPDATE ON employees → allowed to modify rows in employees
+  DELETE ON employees → allowed to remove rows from employees
+  EXECUTE ON my_proc  → allowed to run the procedure my_proc
+```
+
+### GRANT Examples
+
+```sql
+-- Give a user permission to log in
+GRANT CREATE SESSION TO kunal;
+
+-- Give a user permission to read a specific table
+GRANT SELECT ON hr.employees TO kunal;
+
+-- Give multiple permissions at once
+GRANT SELECT, INSERT, UPDATE ON hr.employees TO kunal;
+
+-- Give permissions to ALL users (use PUBLIC)
+GRANT SELECT ON hr.departments TO PUBLIC;
+
+-- Give permission AND let them pass it on to others (WITH GRANT OPTION)
+GRANT SELECT ON hr.employees TO kunal WITH GRANT OPTION;
+-- Now kunal can do: GRANT SELECT ON hr.employees TO priya;
+```
+
+### REVOKE Examples
+
+```sql
+-- Take away a permission
+REVOKE INSERT ON hr.employees FROM kunal;
+
+-- Take away all permissions on a table
+REVOKE ALL ON hr.employees FROM kunal;
+
+-- Take away a system privilege
+REVOKE CREATE TABLE FROM kunal;
+```
+
+### Roles — Grouping Privileges Together
+
+Instead of granting 20 individual permissions to each new developer, you create a **role** (a bundle of permissions) and grant the role:
+
+```sql
+-- Create a role
+CREATE ROLE developer_role;
+
+-- Add privileges to the role
+GRANT CREATE SESSION TO developer_role;
+GRANT CREATE TABLE TO developer_role;
+GRANT SELECT, INSERT ON hr.employees TO developer_role;
+
+-- Give the role to users — one command gives them everything!
+GRANT developer_role TO kunal;
+GRANT developer_role TO priya;
+
+-- New developer joins? Just one command:
+GRANT developer_role TO amit;
+
+-- Someone leaves? Revoke the role:
+REVOKE developer_role FROM amit;
+```
+
+---
+
 ## Quick Reference Cheat Sheet
 
 ```
@@ -1223,6 +1466,12 @@ Execution Order: FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY
 NULL Rules: NULL + anything = NULL, NULL = NULL → NULL (not TRUE)
 
 Join Types: INNER (matching only), LEFT/RIGHT (all from one side), FULL (all from both), CROSS (all × all)
+
+Index Types: B-Tree (default, good for high cardinality), Bitmap (low cardinality)
+
+Sequence: NEXTVAL (get next), CURRVAL (get current)
+
+DCL: GRANT privilege ON object TO user; REVOKE privilege ON object FROM user;
 ```
 
 ---

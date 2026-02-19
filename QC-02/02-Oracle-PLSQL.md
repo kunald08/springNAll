@@ -1249,5 +1249,195 @@ BULK:      BULK COLLECT INTO collection  |  FORALL i IN 1..n DML_statement;
 
 ---
 
+## Autonomous Transactions — Independent Commits
+
+### What is an Autonomous Transaction?
+
+Normally, everything inside a PL/SQL block is part of one big transaction — if you ROLLBACK, everything done inside that block is undone. But sometimes you want a piece of work to be **committed independently**, no matter what happens to the main transaction.
+
+Think of it like this: You're filling out a long form (main transaction). If you mess up and tear up the form, everything on it is lost. But what if you also wrote a note in a separate logbook saying "started filling form at 3pm"? Even if you tear up the form, **the logbook entry stays** — because it was a separate, independent action.
+
+That's exactly what an **autonomous transaction** does — it's a separate transaction inside your main one that commits or rolls back **on its own**.
+
+### Why Do We Need This?
+
+The most common use case is **logging/auditing**. When something fails, you roll back the business data — but you still want to keep a record that the attempt happened.
+
+```sql
+-- Without autonomous transaction:
+BEGIN
+    INSERT INTO orders VALUES (...);      -- Business logic
+    INSERT INTO audit_log VALUES (...);   -- Log the attempt
+    ROLLBACK;  -- Oops! BOTH the order AND the log are gone!
+END;
+-- Problem: You lost the audit trail!
+
+-- With autonomous transaction:
+CREATE OR REPLACE PROCEDURE log_action(p_msg VARCHAR2)
+AS
+    PRAGMA AUTONOMOUS_TRANSACTION;  -- ← This is the magic line!
+BEGIN
+    INSERT INTO audit_log(log_time, message)
+    VALUES (SYSDATE, p_msg);
+    COMMIT;  -- This COMMIT only affects the audit_log INSERT
+             -- It does NOT affect the caller's transaction!
+END;
+
+-- Now use it:
+BEGIN
+    INSERT INTO orders VALUES (...);       -- Business logic
+    log_action('Attempted order insert');  -- Logged independently
+    ROLLBACK;  -- Rolls back the order, but the log entry STAYS!
+END;
+```
+
+### Rules for Autonomous Transactions
+
+```
+1. Must include PRAGMA AUTONOMOUS_TRANSACTION in the DECLARE section
+2. Must end with COMMIT or ROLLBACK (you can't leave it hanging)
+3. Cannot see uncommitted changes from the calling transaction
+4. Common uses:
+   - Audit logging (keep logs even if main transaction fails)
+   - Error logging (record errors even during ROLLBACK)
+   - Sequence generation
+   - Sending alerts/notifications
+```
+
+---
+
+## Cursor Variables (REF CURSORs) — Dynamic, Flexible Cursors
+
+### What is a Cursor Variable?
+
+A regular cursor is like a **bookmark hardwired to one specific book** — it always reads the same query. A **cursor variable (REF CURSOR)** is like a **movable bookmark** — you can point it at different queries at runtime. You can even pass it between procedures as a parameter!
+
+```
+Regular cursor:     CURSOR c IS SELECT * FROM employees;  ← fixed query
+Cursor variable:    my_cursor SYS_REFCURSOR;              ← can point to ANY query
+```
+
+### How to Use Cursor Variables
+
+```sql
+DECLARE
+    -- Declare a cursor variable using the built-in SYS_REFCURSOR type
+    v_cursor SYS_REFCURSOR;
+    v_name   employees.first_name%TYPE;
+    v_salary employees.salary%TYPE;
+BEGIN
+    -- Open it for a specific query (can be ANY query!)
+    OPEN v_cursor FOR
+        SELECT first_name, salary FROM employees WHERE department_id = 10;
+    
+    -- Fetch rows just like a regular cursor
+    LOOP
+        FETCH v_cursor INTO v_name, v_salary;
+        EXIT WHEN v_cursor%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE(v_name || ' earns ' || v_salary);
+    END LOOP;
+    
+    CLOSE v_cursor;
+    
+    -- Now reuse the SAME variable for a DIFFERENT query!
+    OPEN v_cursor FOR
+        SELECT first_name, salary FROM employees WHERE salary > 10000;
+    
+    LOOP
+        FETCH v_cursor INTO v_name, v_salary;
+        EXIT WHEN v_cursor%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE('High earner: ' || v_name);
+    END LOOP;
+    
+    CLOSE v_cursor;
+END;
+```
+
+### Passing Cursor Variables Between Procedures
+
+This is where cursor variables really shine — you can **return a result set from a procedure** to the caller:
+
+```sql
+-- Procedure that OPENS a cursor and returns it to the caller
+CREATE OR REPLACE PROCEDURE get_employees_by_dept(
+    p_dept_id IN NUMBER,
+    p_cursor  OUT SYS_REFCURSOR  -- ← Return a cursor to the caller!
+)
+AS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT employee_id, first_name, salary
+        FROM employees
+        WHERE department_id = p_dept_id;
+    -- Notice: we do NOT close it here!
+    -- The caller is responsible for fetching and closing.
+END;
+
+-- Calling code:
+DECLARE
+    v_cursor SYS_REFCURSOR;
+    v_id     NUMBER;
+    v_name   VARCHAR2(100);
+    v_salary NUMBER;
+BEGIN
+    -- Get a cursor for department 20
+    get_employees_by_dept(20, v_cursor);
+    
+    -- Fetch and process the results
+    LOOP
+        FETCH v_cursor INTO v_id, v_name, v_salary;
+        EXIT WHEN v_cursor%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE(v_id || ': ' || v_name || ' - $' || v_salary);
+    END LOOP;
+    
+    CLOSE v_cursor;
+END;
+```
+
+### Strong vs. Weak REF CURSORs
+
+```
+Weak REF CURSOR (SYS_REFCURSOR):
+  - Can point to ANY query, any columns, any table
+  - More flexible, less type-safe
+  - Use when the query structure changes at runtime
+
+Strong REF CURSOR:
+  - Tied to a specific RETURN TYPE
+  - More type-safe — compiler catches mismatches
+  - Use when you always return the same columns
+
+-- Strong REF CURSOR example:
+TYPE emp_cursor_type IS REF CURSOR RETURN employees%ROWTYPE;
+v_cursor emp_cursor_type;
+-- This cursor can ONLY be opened for queries returning all employee columns
+```
+
+---
+
+## Quick Reference
+
+```
+Block:     DECLARE ... BEGIN ... EXCEPTION ... END;
+Variable:  v_name TYPE := value;
+Anchored:  v_x table.column%TYPE;  |  v_row table%ROWTYPE;
+IF:        IF cond THEN ... ELSIF cond THEN ... ELSE ... END IF;
+CASE:      CASE var WHEN val THEN ... END CASE;
+FOR:       FOR i IN 1..10 LOOP ... END LOOP;
+WHILE:     WHILE cond LOOP ... END LOOP;
+CURSOR:    FOR rec IN (SELECT ...) LOOP ... END LOOP;
+REF CURSOR: v_cur SYS_REFCURSOR; OPEN v_cur FOR 'SELECT ...';
+AUTONOMOUS: PRAGMA AUTONOMOUS_TRANSACTION; (independent commit/rollback)
+EXCEPTION: WHEN exc_name THEN ... WHEN OTHERS THEN ...
+PROCEDURE: CREATE OR REPLACE PROCEDURE name (params) AS BEGIN ... END;
+FUNCTION:  CREATE OR REPLACE FUNCTION name (params) RETURN type AS BEGIN ... RETURN val; END;
+PACKAGE:   Specification (public API) + Body (implementation)
+TRIGGER:   BEFORE/AFTER INSERT/UPDATE/DELETE ON table FOR EACH ROW
+DYNAMIC:   EXECUTE IMMEDIATE 'SQL' INTO var USING bind_var;
+BULK:      BULK COLLECT INTO collection  |  FORALL i IN 1..n DML_statement;
+```
+
+---
+
 *Previous: [01-Oracle-SQL-Fundamentals.md](01-Oracle-SQL-Fundamentals.md)*
 *Next: [03-Java-Basics.md](03-Java-Basics.md)*

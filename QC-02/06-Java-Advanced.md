@@ -754,16 +754,16 @@ A **thread** is a lightweight unit of execution within a process. Multiple threa
 
 ```
 Process (your Java app):
-┌─────────────────────────────────────────────────┐
-│  Thread 1 (main)    Thread 2         Thread 3   │
+┌──────────────────────────────────────────────────┐
+│  Thread 1 (main)    Thread 2         Thread 3    │
 │  │                  │                │           │
 │  │ Load data        │ Process data   │ Save data │
 │  │ Calculate        │ Network call   │ UI update │
 │  │ Display          │ Parse response │ Animation │
 │  ▼                  ▼                ▼           │
 │  All threads share the same HEAP memory          │
-│  Each thread has its own STACK                    │
-└─────────────────────────────────────────────────┘
+│  Each thread has its own STACK                   │
+└──────────────────────────────────────────────────┘
 ```
 
 ### Thread States
@@ -897,9 +897,9 @@ Every Java object has a "monitor" (intrinsic lock):
 
 Object:
 ┌─────────────────────┐
-│ Object Header        │
+│ Object Header       │
 │ ┌─────────────────┐ │
-│ │ Mark Word        │ │ ← Contains lock information
+│ │ Mark Word       │ │ ← Contains lock information
 │ │ (lock state,    │ │
 │ │  thread owner,  │ │
 │ │  hash code)     │ │
@@ -920,6 +920,8 @@ Lock escalation (JVM optimization):
 ```
 
 ### Deadlock
+
+Deadlock occurs when two or more threads are waiting for each other to release locks, causing all of them to be stuck forever. and they can never proceed. Deadlock is a common concurrency problem that can lead to unresponsive applications.
 
 ```java
 // Two threads each holding a lock the other needs
@@ -954,6 +956,8 @@ new Thread(() -> {
 
 ### Livelock
 
+Livelock is like deadlock's annoying cousin — threads are not blocked, but they keep responding to each other without making progress. 
+
 ```java
 // Both threads keep responding to each other but never make progress
 // Like two people in a hallway who keep stepping aside for each other
@@ -967,6 +971,8 @@ new Thread(() -> {
 ```
 
 ### Producer-Consumer Problem
+
+Producer and consumer threads share a buffer. Producer creates items and puts them in the buffer, while consumer takes items from the buffer. Proper synchronization is needed to avoid race conditions and ensure thread safety. 
 
 ```java
 import java.util.concurrent.BlockingQueue;
@@ -1033,6 +1039,8 @@ executor.awaitTermination(10, TimeUnit.SECONDS);  // Wait for completion
 ---
 
 ## 10. Reactive Programming
+
+Reactive programming is a paradigm for building asynchronous, non-blocking, event-driven applications that can handle high concurrency and backpressure. It’s all about working with streams of data and reacting to changes over time. Asynchronous, non-blocking, event-driven applications that can handle high concurrency and backpressure. It’s all about working with streams of data and reacting to changes over time. Asynchronous, non-blocking, event-driven applications that can handle high concurrency and backpressure. It’s all about working with streams of data and reacting to changes over time.
 
 ### Reactive Manifesto
 
@@ -1129,6 +1137,231 @@ publisher.subscribe(subscriber);
 publisher.submit("Hello");
 publisher.submit("World");
 publisher.close();  // Triggers onComplete
+```
+
+### Project Reactor (Mono & Flux) — What Developers Actually Use
+
+The raw `Flow` API above is low-level — like writing HTTP servers using raw sockets. In practice, developers use **Project Reactor** (used by Spring WebFlux) or **RxJava**. Here's what you need to know:
+
+```
+Project Reactor has two main types:
+
+Mono<T>  — A stream of 0 or 1 item.   Think: "Maybe I have a result, maybe not"
+Flux<T>  — A stream of 0 to N items.  Think: "A stream of data flowing through"
+
+Regular Java:              Reactive equivalent:
+  T                          Mono<T>        (one item)
+  List<T>                    Flux<T>        (many items)
+  Optional<T>                Mono<T>        (0 or 1)
+  void                       Mono<Void>     (completion signal)
+```
+
+```java
+// Maven dependency for Project Reactor:
+// <groupId>io.projectreactor</groupId>
+// <artifactId>reactor-core</artifactId>
+
+// Mono — represents 0 or 1 item
+Mono<String> mono = Mono.just("Hello");
+mono.subscribe(value -> System.out.println(value));  // Prints: Hello
+
+Mono<String> emptyMono = Mono.empty();  // 0 items
+Mono<String> errorMono = Mono.error(new RuntimeException("Oops!"));  // Error signal
+
+// Flux — represents 0 to N items
+Flux<String> flux = Flux.just("A", "B", "C");
+flux.subscribe(System.out::println);  // Prints: A, B, C
+
+Flux<Integer> rangeFlux = Flux.range(1, 5);  // 1, 2, 3, 4, 5
+
+// Transforming data (just like Streams but reactive):
+Flux.just("hello", "world", "java")
+    .filter(s -> s.length() > 4)       // Keep only "hello" and "world"
+    .map(String::toUpperCase)          // Transform to "HELLO", "WORLD"
+    .subscribe(System.out::println);   // Print each
+
+// Error handling:
+Mono.just("data")
+    .map(s -> {
+        if (s.equals("data")) throw new RuntimeException("Bad data!");
+        return s;
+    })
+    .onErrorReturn("fallback value")   // If error, use this value instead
+    .subscribe(System.out::println);   // Prints: fallback value
+```
+
+**When to use Reactive?**
+
+```
+✅ USE Reactive when:
+  - You have high-concurrency API servers (thousands of simultaneous requests)
+  - You're doing lots of I/O (database calls, HTTP calls to other services)
+  - You're building with Spring WebFlux
+  - You're working with streaming data (WebSockets, SSE)
+
+❌ DON'T USE Reactive when:
+  - Your app is simple CRUD (use regular Spring MVC instead — much simpler)
+  - You're doing CPU-heavy work (reactive doesn't help with computation)
+  - Your team is not familiar with it (steep learning curve)
+```
+
+---
+
+## 11. CompletableFuture — Async Programming Made Easy
+
+### The Problem
+
+Imagine you need to:
+1. Call a REST API to get user data
+2. Call another API to get their orders
+3. Combine both results
+
+Each call takes 2 seconds. Doing them one after another = **4 seconds**. But if they don't depend on each other, you could do them **in parallel** = only **2 seconds**. That's what `CompletableFuture` helps with — running things asynchronously and combining results.
+
+### What is CompletableFuture?
+
+Think of it as a **promise** — "I promise I'll give you a result later, but for now, go do other things." It's Java's way of doing async/non-blocking programming.
+
+```java
+import java.util.concurrent.CompletableFuture;
+
+// Basic: Run something in the background
+CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
+    // This runs in a SEPARATE thread!
+    // Imagine this is a slow API call...
+    sleep(2000);
+    return "Hello from background thread!";
+});
+
+// Meanwhile, your main thread can do other work...
+System.out.println("Main thread doing other stuff...");
+
+// When you need the result, call .get() or .join()
+String result = future.join();  // Waits if not done yet
+System.out.println(result);     // "Hello from background thread!"
+```
+
+### Chaining Operations — thenApply, thenAccept, thenRun
+
+```java
+// thenApply — transform the result (like .map())
+CompletableFuture<String> future = CompletableFuture
+    .supplyAsync(() -> "hello")
+    .thenApply(s -> s.toUpperCase())        // "HELLO"
+    .thenApply(s -> s + " WORLD!");         // "HELLO WORLD!"
+
+System.out.println(future.join());  // "HELLO WORLD!"
+
+// thenAccept — consume the result (no return value)
+CompletableFuture.supplyAsync(() -> "Hello")
+    .thenAccept(s -> System.out.println("Got: " + s));  // Prints: Got: Hello
+
+// thenRun — run something after, but doesn't use the result
+CompletableFuture.supplyAsync(() -> "Hello")
+    .thenRun(() -> System.out.println("Done!"));  // Prints: Done!
+```
+
+### Combining Multiple Futures — thenCombine, allOf, anyOf
+
+```java
+// thenCombine — combine TWO independent futures
+CompletableFuture<String> userFuture = CompletableFuture.supplyAsync(() -> {
+    sleep(2000);
+    return "Kunal";  // Fetching user data...
+});
+
+CompletableFuture<Integer> ordersFuture = CompletableFuture.supplyAsync(() -> {
+    sleep(2000);
+    return 5;  // Fetching order count...
+});
+
+// Both run in parallel! Total time = 2 seconds, not 4!
+CompletableFuture<String> combined = userFuture.thenCombine(ordersFuture,
+    (user, orders) -> user + " has " + orders + " orders"
+);
+System.out.println(combined.join());  // "Kunal has 5 orders"
+
+// allOf — wait for ALL futures to complete
+CompletableFuture<Void> all = CompletableFuture.allOf(
+    userFuture, ordersFuture  // Wait for both to finish
+);
+all.join();  // Blocks until ALL are done
+
+// anyOf — as soon as ANY ONE finishes, continue
+CompletableFuture<Object> fastest = CompletableFuture.anyOf(
+    userFuture, ordersFuture  // Whichever finishes first wins
+);
+System.out.println(fastest.join());  // Result of the faster one
+```
+
+### Error Handling
+
+```java
+CompletableFuture<String> future = CompletableFuture
+    .supplyAsync(() -> {
+        if (true) throw new RuntimeException("API is down!");
+        return "data";
+    })
+    .exceptionally(ex -> {
+        // This is like a catch block
+        System.err.println("Error: " + ex.getMessage());
+        return "fallback data";  // Return a default value
+    });
+
+System.out.println(future.join());  // "fallback data"
+
+// handle — can handle BOTH success and failure
+CompletableFuture<String> future2 = CompletableFuture
+    .supplyAsync(() -> "actual data")
+    .handle((result, exception) -> {
+        if (exception != null) {
+            return "Error: " + exception.getMessage();
+        }
+        return "Success: " + result;
+    });
+```
+
+### Real-World Example: Fetching Data in Parallel
+
+```java
+// Imagine a dashboard page that needs data from 3 different services:
+
+CompletableFuture<User> userFuture = CompletableFuture.supplyAsync(
+    () -> userService.getUser(userId)           // Takes 1 second
+);
+CompletableFuture<List<Order>> ordersFuture = CompletableFuture.supplyAsync(
+    () -> orderService.getOrders(userId)        // Takes 2 seconds
+);
+CompletableFuture<List<Notification>> notifFuture = CompletableFuture.supplyAsync(
+    () -> notificationService.getNotifs(userId) // Takes 1.5 seconds
+);
+
+// All three run IN PARALLEL!
+// Total time = max(1, 2, 1.5) = 2 seconds (not 1+2+1.5 = 4.5 seconds!)
+
+CompletableFuture.allOf(userFuture, ordersFuture, notifFuture).join();
+
+// Now all data is ready:
+User user = userFuture.join();
+List<Order> orders = ordersFuture.join();
+List<Notification> notifications = notifFuture.join();
+
+// Build the dashboard with all the data
+return new Dashboard(user, orders, notifications);
+```
+
+```
+Summary: CompletableFuture operations
+
+supplyAsync(() -> value)     — Run in background, return a value
+thenApply(v -> newV)         — Transform the result
+thenAccept(v -> ...)         — Consume the result (void)
+thenRun(() -> ...)           — Run after completion (ignores result)
+thenCombine(other, (a,b)->)  — Combine two futures
+allOf(f1, f2, f3)            — Wait for ALL
+anyOf(f1, f2, f3)            — Wait for FIRST
+exceptionally(ex -> default) — Handle errors
+handle((result, ex) -> ...)  — Handle both success and error
 ```
 
 ---

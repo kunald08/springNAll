@@ -29,20 +29,20 @@
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│                    4 Pillars of OOP                        │
+│                    4 Pillars of OOP                      │
 │                                                          │
-│  ┌──────────────┐  ┌──────────────┐                      │
-│  │ Encapsulation │  │ Abstraction  │                      │
-│  │ (Hide data,   │  │ (Hide        │                      │
-│  │  expose API)  │  │  complexity) │                      │
-│  └──────────────┘  └──────────────┘                      │
+│  ┌───────────────┐  ┌──────────────┐                     │
+│  │ Encapsulation │  │ Abstraction  │                     │
+│  │ (Hide data,   │  │ (Hide        │                     │
+│  │  expose API)  │  │  complexity) │                     │
+│  └───────────────┘  └──────────────┘                     │
 │                                                          │
-│  ┌──────────────┐  ┌──────────────┐                      │
-│  │ Inheritance   │  │ Polymorphism │                      │
-│  │ (Reuse code,  │  │ (One         │                      │
-│  │  IS-A)        │  │  interface,  │                      │
-│  └──────────────┘  │  many forms) │                      │
-│                    └──────────────┘                      │
+│  ┌───────────────┐  ┌──────────────┐                     │
+│  │ Inheritance   │  │ Polymorphism │                     │
+│  │ (Reuse code,  │  │ (One         │                     │
+│  │  IS-A)        │  │  interface,  │                     │
+│  └───────────────┘  │  many forms) │                     │
+│                     └──────────────┘                     │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -99,17 +99,17 @@ bob.introduce();    // Hi, I'm Bob, age 25
 Memory Layout:
                     
 Stack                    Heap
-┌──────────────┐        ┌──────────────────────────┐
-│ alice: 0xA1  │───────▶│ Employee@A1               │
-│              │        │   name ──▶ "Alice"         │
-│              │        │   age: 30                  │
-│              │        │   salary: 75000.0          │
-├──────────────┤        ├──────────────────────────┤
-│ bob: 0xB2    │───────▶│ Employee@B2               │
-│              │        │   name ──▶ "Bob"           │
-└──────────────┘        │   age: 25                  │
-                        │   salary: 65000.0          │
-                        └──────────────────────────┘
+┌──────────────┐         ┌──────────────────────────┐
+│ alice: 0xA1  │───────▶│ Employee@A1              │
+│              │         │   name ──▶ "Alice"      │
+│              │         │   age: 30                │
+│              │         │   salary: 75000.0        │
+├──────────────┤         ├──────────────────────────┤
+│ bob: 0xB2    │───────▶│ Employee@B2              │
+│              │         │   name ──▶ "Bob"        │
+└──────────────┘         │   age: 25                │
+                         │   salary: 65000.0        │
+                         └──────────────────────────┘
 
 alice and bob are different objects with different data,
 but they share the same class definition (blueprint).
@@ -1305,50 +1305,147 @@ Look at YOUR code first (ignore framework/library lines initially)
 
 ## 17. Modern Java Features
 
+Java has evolved a LOT in recent versions. These features make your code shorter, safer, and more expressive. Let's go through each one in plain English.
+
 ### Sealed Classes (Java 17)
+
+**The Problem:** In old Java, once you made a class, ANYONE could extend it. You had no control over who creates subclasses.
+
+**The Solution:** Sealed classes let you explicitly list which classes are allowed to extend yours — like a VIP list for inheritance.
 
 ```java
 // A sealed class restricts which classes can extend it
 public sealed class Shape permits Circle, Rectangle, Triangle {
     // Only Circle, Rectangle, and Triangle can extend Shape
-    // No other class can!
+    // If someone tries to write "class Hexagon extends Shape" → COMPILER ERROR!
 }
 
-public final class Circle extends Shape { ... }      // final = can't be extended further
-public sealed class Rectangle extends Shape permits Square { ... }  // allows Square
-public non-sealed class Triangle extends Shape { ... }  // open for extension
+// Each permitted subclass MUST be one of these three:
+public final class Circle extends Shape { ... }      
+// "final" = nobody can extend Circle any further. The chain stops here.
 
-// Why? Gives you control over the class hierarchy
-// Enables exhaustive pattern matching in switch
+public sealed class Rectangle extends Shape permits Square { ... }  
+// "sealed" again = Rectangle allows only Square to extend it.
+
+public non-sealed class Triangle extends Shape { ... }  
+// "non-sealed" = anyone can extend Triangle. It's open again.
 ```
 
-### Pattern Matching (Java 16+)
+**Why is this useful?**
+
+1. **You control your hierarchy** — no unexpected subclasses popping up
+2. **The compiler can help you** — when you use a switch on a sealed class, the compiler knows ALL possible subclasses. If you miss one, it warns you!
 
 ```java
-// Old way:
-if (obj instanceof String) {
-    String s = (String) obj;     // Redundant cast
-    System.out.println(s.length());
-}
-
-// New way:
-if (obj instanceof String s) {   // Cast and assign in one step!
-    System.out.println(s.length());
-}
-
-// Pattern matching in switch (Java 21+):
-String describe(Object obj) {
-    return switch (obj) {
-        case Integer i  -> "Integer: " + i;
-        case String s   -> "String: " + s;
-        case Double d   -> "Double: " + d;
-        case null       -> "null";
-        default         -> "Unknown: " + obj;
+// Because Shape is sealed, the compiler knows all cases are covered:
+double area(Shape shape) {
+    return switch (shape) {
+        case Circle c    -> Math.PI * c.radius() * c.radius();
+        case Rectangle r -> r.width() * r.height();
+        case Triangle t  -> 0.5 * t.base() * t.height();
+        // No "default" needed! Compiler knows these are ALL possibilities.
     };
 }
 ```
 
+### Pattern Matching (Java 16+)
+
+**The Problem:** The old `instanceof` + cast pattern was repetitive — you check the type, then immediately cast to that same type. Why do it twice?
+
+```java
+// Old way (Java 15 and before):
+if (obj instanceof String) {
+    String s = (String) obj;     // Redundant! We JUST checked it's a String!
+    System.out.println(s.length());
+}
+```
+
+**The Solution:** Pattern matching lets you check AND cast in one step:
+
+```java
+// New way (Java 16+):
+if (obj instanceof String s) {   // Check + cast + assign, all in one!
+    System.out.println(s.length());
+    // 's' is automatically a String here. No manual casting needed.
+}
+// Note: 's' is NOT available outside the if block.
+```
+
+**Pattern matching in switch (Java 21+)** — this is where it gets really powerful:
+
+```java
+String describe(Object obj) {
+    return switch (obj) {
+        case Integer i  -> "Integer: " + i;    // obj is an Integer, call it 'i'
+        case String s   -> "String: " + s;     // obj is a String, call it 's'
+        case Double d   -> "Double: " + d;
+        case int[] arr  -> "Array of length " + arr.length;
+        case null       -> "null";             // Yes, you can match null!
+        default         -> "Unknown: " + obj;
+    };
+}
+// No more if-else chains with instanceof all over the place!
+```
+
+**Guarded Patterns** — add extra conditions with `when`:
+
+```java
+String classifyNumber(Object obj) {
+    return switch (obj) {
+        case Integer i when i > 0  -> "Positive integer: " + i;
+        case Integer i when i < 0  -> "Negative integer: " + i;
+        case Integer i             -> "Zero";
+        case Double d when d > 0   -> "Positive double: " + d;
+        default                    -> "Not a number";
+    };
+}
+// The "when" keyword adds a condition AFTER the type check.
+// "case Integer i when i > 0" means: "if it's an Integer AND it's positive"
+```
+
+### Switch Expressions (Java 14+)
+
+Even without pattern matching, switch got a huge upgrade. The old switch was clunky and error-prone (easy to forget `break`). The new switch is cleaner:
+
+```java
+// Old switch (statement — doesn't return a value):
+String dayType;
+switch (day) {
+    case MONDAY:
+    case TUESDAY:
+    case WEDNESDAY:
+    case THURSDAY:
+    case FRIDAY:
+        dayType = "Weekday";
+        break;                    // Forget this → BUG! Falls through!
+    case SATURDAY:
+    case SUNDAY:
+        dayType = "Weekend";
+        break;
+    default:
+        dayType = "Unknown";
+}
+
+// New switch (expression — returns a value, no break needed!):
+String dayType = switch (day) {
+    case MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY -> "Weekday";
+    case SATURDAY, SUNDAY -> "Weekend";
+};
+// Arrow syntax (→) means NO fall-through. Clean and safe.
+
+// If you need multiple lines in a case, use yield:
+String dayType = switch (day) {
+    case MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY -> {
+        System.out.println("Back to work!");
+        yield "Weekday";  // "yield" is like return, but for switch expressions
+    }
+    case SATURDAY, SUNDAY -> "Weekend";
+};
+```
+
 ### Text Blocks (Java 15)
+
+**The Problem:** Writing multi-line strings in Java was ugly — full of `\n`, `\"`, and `+` concatenation.
 
 ```java
 // Old way (ugly string concatenation):
@@ -1365,9 +1462,30 @@ String json = """
         }
         """;
 // Much cleaner! Preserves formatting, no escape characters needed.
+// The triple quotes (""") start and end the text block.
+// Indentation relative to the closing """ is preserved.
+```
+
+**Where is this super handy?**
+- SQL queries
+- JSON/XML strings
+- HTML snippets
+- Multi-line log messages
+
+```java
+// SQL query — so much cleaner!
+String sql = """
+        SELECT e.name, d.department_name
+        FROM employees e
+        JOIN departments d ON e.dept_id = d.id
+        WHERE e.salary > 50000
+        ORDER BY e.name
+        """;
 ```
 
 ### Records (Java 16)
+
+**The Problem:** Java is famous for "boilerplate" — you needed 50+ lines just to create a simple data class with fields, constructor, getters, equals, hashCode, and toString.
 
 ```java
 // Old way: 50+ lines of boilerplate for a simple data class
@@ -1385,21 +1503,64 @@ public class Point {
 
 // New way — Record (1 line!):
 public record Point(int x, int y) { }
+```
 
-// Automatically provides:
-// - Private final fields (x, y)
-// - Constructor
-// - Accessor methods: x(), y()  (not getX()!)
-// - equals(), hashCode(), toString()
-// - Immutable! No setters.
+**What does the compiler generate for you automatically?**
 
+```
+A record automatically gives you:
+  ✅ Private final fields (x, y) — immutable!
+  ✅ Constructor that takes all fields
+  ✅ Accessor methods: x(), y()  (Note: NOT getX()! Just x()!)
+  ✅ equals() — two Points are equal if both x and y match
+  ✅ hashCode() — based on all fields
+  ✅ toString() — prints "Point[x=3, y=4]"
+  ❌ No setters — records are immutable. Once created, fields can't change.
+```
+
+```java
 Point p = new Point(3, 4);
-System.out.println(p.x());         // 3
+System.out.println(p.x());         // 3  (accessor, not getX!)
 System.out.println(p.y());         // 4
 System.out.println(p);             // Point[x=3, y=4]
+
+Point p2 = new Point(3, 4);
+System.out.println(p.equals(p2));  // true (value equality!)
+
+// You can add custom methods and validation:
+public record Person(String name, int age) {
+    // Compact constructor — for validation
+    public Person {
+        if (age < 0) throw new IllegalArgumentException("Age can't be negative!");
+        name = name.trim();  // Can modify parameters before they're assigned to fields
+    }
+    
+    // Custom method
+    public String greeting() {
+        return "Hi, I'm " + name + " and I'm " + age + " years old!";
+    }
+}
+```
+
+**When to use Records vs. regular Classes:**
+
+```
+Use a Record when:
+  - You just need a data carrier (DTO, value object)
+  - Immutability is fine (no need to change fields after creation)
+  - You want automatic equals/hashCode/toString
+
+Use a regular Class when:
+  - You need mutable state (setters)
+  - You need inheritance (records can't extend other classes)
+  - You need complex behavior beyond simple data holding
 ```
 
 ### Virtual Threads (Java 21)
+
+**The Problem:** Traditional Java threads are "heavy" — each one uses about 1MB of memory and is managed by the operating system. If you want 10,000 concurrent connections, you need 10,000 threads = 10GB of memory just for thread stacks!
+
+**The Solution:** Virtual threads are super lightweight — managed by Java itself, not the OS. You can have **millions** of them.
 
 ```java
 // Traditional threads are expensive (each needs ~1MB of stack memory)
@@ -1433,6 +1594,25 @@ try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 // When a virtual thread blocks (IO, sleep), it's UNMOUNTED from the platform thread
 // The platform thread is freed to run other virtual threads
 // When the IO completes, the virtual thread is MOUNTED back on any available platform thread
+```
+
+```
+Platform Threads vs. Virtual Threads:
+
+Platform Threads (old):
+┌──────────┐  ┌──────────┐  ┌──────────┐
+│Thread 1  │  │Thread 2  │  │Thread 3  │    Only 3 threads.
+│ blocked  │  │ working  │  │ blocked  │    Threads 1 & 3 are blocked (waiting for IO)
+│ (IO wait)│  │          │  │ (IO wait)│    but STILL using 1MB memory each!
+└──────────┘  └──────────┘  └──────────┘
+
+Virtual Threads (new):
+┌───────────────────────────────────────┐
+│  Platform Thread (1 of few)           │
+│  ┌─VT1─┐ ┌─VT2─┐ ┌─VT3─┐ ┌─VT4─┐  │    1000 virtual threads, but only
+│  │work │ │wait │ │work │ │wait │  │    a few platform threads needed!
+│  └─────┘ └─────┘ └─────┘ └─────┘  │    When VT2 waits, VT5 takes its spot.
+└───────────────────────────────────────┘
 ```
 
 ---

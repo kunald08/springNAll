@@ -573,5 +573,175 @@ void testFinal() {
 
 ---
 
+## @InjectMocks Deep Dive — How It Works and Common Pitfalls
+
+### How @InjectMocks Works
+
+`@InjectMocks` creates a **real instance** of the class and automatically injects your `@Mock` objects into it. It tries injection in this order:
+
+```
+1. Constructor injection — looks for a constructor that matches the mock types
+2. Setter injection — looks for setter methods matching the mock types
+3. Field injection — directly injects into fields (even private ones!)
+
+If it can't find a match → that field stays NULL (no error thrown!)
+```
+
+```java
+// Your class:
+public class OrderService {
+    private UserRepository userRepo;      // Needs a mock
+    private PaymentGateway paymentGateway; // Needs a mock
+    private EmailService emailService;    // Needs a mock
+    
+    // Constructor (Mockito will use this first)
+    public OrderService(UserRepository userRepo, PaymentGateway paymentGateway,
+                        EmailService emailService) {
+        this.userRepo = userRepo;
+        this.paymentGateway = paymentGateway;
+        this.emailService = emailService;
+    }
+}
+
+// Your test:
+@ExtendWith(MockitoExtension.class)
+class OrderServiceTest {
+    @Mock UserRepository userRepo;
+    @Mock PaymentGateway paymentGateway;
+    @Mock EmailService emailService;
+    
+    @InjectMocks OrderService orderService;  // Real OrderService with mocks injected!
+    
+    @Test
+    void testPlaceOrder() {
+        // orderService has the 3 mocks injected — ready to test!
+    }
+}
+```
+
+### Common Pitfalls
+
+```java
+// ❌ PITFALL 1: Forgot to mock a dependency → NullPointerException at runtime!
+@Mock UserRepository userRepo;
+// Forgot to mock PaymentGateway!
+@InjectMocks OrderService orderService;  
+// orderService.paymentGateway is NULL → NPE when you call a method that uses it!
+
+// ❌ PITFALL 2: doReturn vs when for Spies
+@Spy List<String> spyList = new ArrayList<>();
+
+// when() calls the REAL method first, THEN stubs it:
+when(spyList.get(0)).thenReturn("mock");  // THROWS IndexOutOfBoundsException!
+// Because .get(0) is called on an empty list!
+
+// doReturn() doesn't call the real method:
+doReturn("mock").when(spyList).get(0);  // ✅ Works! No real call.
+
+// Rule of thumb: Use doReturn() with @Spy, use when() with @Mock
+```
+
+### Alternative: MockitoAnnotations.openMocks()
+
+Instead of `@ExtendWith(MockitoExtension.class)`, you can manually initialize mocks:
+
+```java
+class OrderServiceTest {
+    @Mock UserRepository userRepo;
+    @InjectMocks OrderService orderService;
+    
+    private AutoCloseable closeable;
+    
+    @BeforeEach
+    void setUp() {
+        closeable = MockitoAnnotations.openMocks(this);  // Initialize mocks
+    }
+    
+    @AfterEach
+    void tearDown() throws Exception {
+        closeable.close();  // Clean up
+    }
+}
+
+// When to use this instead of @ExtendWith:
+// - When you need to combine with other JUnit extensions
+// - In legacy code that can't use @ExtendWith
+// - Generally, @ExtendWith(MockitoExtension.class) is preferred — simpler!
+```
+
+---
+
+## Integration with Spring Boot Testing
+
+When testing Spring Boot applications, Mockito integrates beautifully with Spring's test annotations:
+
+### @MockBean — Replace a Spring Bean with a Mock
+
+```java
+@SpringBootTest
+class UserControllerTest {
+    
+    @Autowired
+    private UserController userController;  // Real controller from Spring context
+    
+    @MockBean   // ← This replaces the REAL UserService in Spring's context with a mock!
+    private UserService userService;
+    
+    @Test
+    void should_ReturnUser_When_IdExists() {
+        // Stub the mock bean
+        when(userService.findById(1L))
+            .thenReturn(new User(1L, "Kunal", "kunal@email.com"));
+        
+        // Call the real controller — it will use the mocked service!
+        User result = userController.getUser(1L);
+        
+        assertEquals("Kunal", result.getName());
+    }
+}
+```
+
+### @SpyBean — Wrap a Real Spring Bean with a Spy
+
+```java
+@SpringBootTest
+class NotificationServiceTest {
+    
+    @SpyBean   // ← Real bean, but you can verify calls and stub specific methods
+    private EmailService emailService;
+    
+    @Autowired
+    private OrderService orderService;
+    
+    @Test
+    void should_SendEmail_When_OrderPlaced() {
+        orderService.placeOrder(newOrder);
+        
+        // Verify the real email service was called
+        verify(emailService).sendOrderConfirmation(any());
+    }
+}
+```
+
+### When to Use What
+
+```
+Testing a class in isolation (unit test)?
+  → @Mock + @InjectMocks + @ExtendWith(MockitoExtension.class)
+  → No Spring context needed. Fast! (~milliseconds)
+
+Testing with Spring context (integration test)?
+  → @MockBean to replace beans you want to control
+  → @SpyBean to spy on beans you want to observe
+  → Slower (~seconds) because Spring context has to load
+
+Rule of thumb:
+  Unit tests (fast, isolated)     → Mockito's @Mock
+  Integration tests (Spring)      → Spring's @MockBean
+  Don't use @MockBean in unit tests — it's overkill and slow!
+```
+
+---
+
 *Previous: [09-JUnit-Testing.md](09-JUnit-Testing.md)*
 *Next: [11-Logging.md](11-Logging.md)*

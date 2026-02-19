@@ -473,5 +473,265 @@ If you see "SLF4J: No SLF4J providers were found"
 
 ---
 
+## MDC — Mapped Diagnostic Context (Adding Context to Every Log Line)
+
+### The Problem
+
+In a web application, multiple users make requests at the same time. Your logs look like this:
+
+```
+2024-01-15 10:30:01 INFO  Processing order
+2024-01-15 10:30:01 INFO  Processing order
+2024-01-15 10:30:01 INFO  Checking inventory
+2024-01-15 10:30:01 INFO  Payment successful
+2024-01-15 10:30:02 INFO  Checking inventory
+2024-01-15 10:30:02 INFO  Payment failed
+```
+
+Which log lines belong to which user? Which request? **You can't tell!** This is a nightmare when debugging production issues.
+
+### The Solution: MDC
+
+**MDC (Mapped Diagnostic Context)** lets you attach contextual data (like user ID, request ID, session ID) to every log line automatically. It's like a sticky note that follows every log message around.
+
+```java
+import org.slf4j.MDC;
+
+// In a web filter (runs before every request):
+public class RequestFilter implements Filter {
+    
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, 
+                         FilterChain chain) throws IOException, ServletException {
+        try {
+            // Generate a unique ID for this request
+            String requestId = UUID.randomUUID().toString().substring(0, 8);
+            String userId = ((HttpServletRequest) request).getHeader("X-User-Id");
+            
+            // Put context into MDC — these values will appear in ALL log lines
+            // for this thread, automatically!
+            MDC.put("requestId", requestId);
+            MDC.put("userId", userId != null ? userId : "anonymous");
+            
+            // Continue processing the request
+            chain.doFilter(request, response);
+            
+        } finally {
+            MDC.clear();  // ALWAYS clean up! Otherwise values leak to other requests.
+        }
+    }
+}
+```
+
+```xml
+<!-- In your log4j2.xml or logback.xml, use %X{key} to print MDC values: -->
+<PatternLayout pattern="%d [%X{requestId}] [%X{userId}] %-5p %c - %m%n"/>
+```
+
+Now your logs look like this — **every line has context!**
+
+```
+2024-01-15 10:30:01 [a1b2c3d4] [kunal]  INFO  Processing order
+2024-01-15 10:30:01 [e5f6g7h8] [priya]  INFO  Processing order
+2024-01-15 10:30:01 [a1b2c3d4] [kunal]  INFO  Checking inventory
+2024-01-15 10:30:01 [a1b2c3d4] [kunal]  INFO  Payment successful
+2024-01-15 10:30:02 [e5f6g7h8] [priya]  INFO  Checking inventory
+2024-01-15 10:30:02 [e5f6g7h8] [priya]  ERROR Payment failed
+
+Now you can easily filter: "Show me all logs for request a1b2c3d4"
+→ Instantly see the full journey of Kunal's request!
+```
+
+---
+
+## Logback — The Default Logger in Spring Boot
+
+### Why Logback?
+
+If you use **Spring Boot**, you're already using Logback! It's included automatically. You don't need to add any dependencies. Logback was created by the same person who created SLF4J and Log4j — so it's well-designed and fast.
+
+```
+Log4J 2  → Standalone, very fast, used outside Spring
+Logback  → Created by SLF4J author, Spring Boot's default, simpler config
+Both     → Work with SLF4J (same API in your code!)
+```
+
+### Logback Configuration (logback-spring.xml)
+
+Spring Boot looks for `logback-spring.xml` or `logback.xml` in the `src/main/resources` folder:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    
+    <!-- Console output (colored!) -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %highlight(%-5level) %cyan(%logger{36}) - %msg%n</pattern>
+        </encoder>
+    </appender>
+    
+    <!-- File output with daily rotation -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/app.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/app.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>  <!-- Keep 30 days of logs -->
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{requestId}] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    
+    <!-- Set levels for specific packages -->
+    <logger name="com.myapp" level="DEBUG"/>           <!-- Your app: DEBUG level -->
+    <logger name="org.springframework" level="WARN"/>  <!-- Spring: only WARN+ -->
+    <logger name="org.hibernate.SQL" level="DEBUG"/>   <!-- See SQL queries -->
+    
+    <!-- Root logger -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+    
+</configuration>
+```
+
+Or even simpler — just use `application.properties` (Spring Boot feature):
+
+```properties
+# In application.properties (no XML needed for basic config!):
+logging.level.root=INFO
+logging.level.com.myapp=DEBUG
+logging.level.org.hibernate.SQL=DEBUG
+logging.file.name=logs/app.log
+logging.pattern.console=%d{HH:mm:ss} %-5level %logger{36} - %msg%n
+```
+
+---
+
+## Structured Logging — JSON Logs for Production
+
+### Why Structured Logging?
+
+Plain text logs are fine for reading in your terminal, but in production, logs are sent to log management tools like **ELK Stack (Elasticsearch + Logstash + Kibana)**, **Splunk**, or **Datadog**. These tools work MUCH better with **JSON formatted logs** because they can search, filter, and analyze structured data.
+
+```
+Plain text log (hard for machines to parse):
+  2024-01-15 10:30:01 INFO [a1b2c3d4] OrderService - Order placed for user 42, total $99.99
+
+JSON structured log (easy for machines to parse):
+  {
+    "timestamp": "2024-01-15T10:30:01.000Z",
+    "level": "INFO",
+    "requestId": "a1b2c3d4",
+    "logger": "OrderService",
+    "message": "Order placed",
+    "userId": 42,
+    "orderTotal": 99.99
+  }
+
+Now Elasticsearch can: "Find all orders where orderTotal > 50 AND level = ERROR"
+→ Impossible to do reliably with plain text!
+```
+
+### Setting Up JSON Logging with Logback
+
+```xml
+<!-- Add this dependency for JSON encoder -->
+<!-- <groupId>net.logstash.logback</groupId> -->
+<!-- <artifactId>logstash-logback-encoder</artifactId> -->
+
+<!-- In logback-spring.xml: -->
+<appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>logs/app.json</file>
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+        <!-- Automatically includes timestamp, level, logger, message, MDC, stack traces -->
+    </encoder>
+</appender>
+```
+
+---
+
+## Async Logging — Don't Let Logging Slow Down Your App
+
+### The Problem
+
+Writing logs to disk takes time (disk I/O). If your app logs thousands of messages per second, the logging itself can slow down your application — the thread has to WAIT for the log to be written to disk before continuing.
+
+### The Solution: Async Logging
+
+With async logging, log messages are put into a **queue** in memory (very fast — microseconds), and a separate background thread writes them to disk. Your application thread doesn't wait!
+
+```
+Synchronous logging (slow):
+  Your code → log.info("msg") → Write to disk (5ms) → Continue code
+  ↑ Your thread is BLOCKED for 5ms
+
+Asynchronous logging (fast):
+  Your code → log.info("msg") → Put in queue (0.001ms) → Continue code immediately!
+                                    ↓
+                              Background thread → Write to disk (5ms)
+  ↑ Your thread is NOT blocked!
+```
+
+### Log4J 2 Async Logging
+
+```xml
+<!-- Log4J 2: AsyncAppender wraps a regular appender -->
+<Configuration>
+    <Appenders>
+        <File name="SyncFile" fileName="logs/app.log">
+            <PatternLayout pattern="%d %-5p %c - %m%n"/>
+        </File>
+        
+        <Async name="AsyncFile">
+            <AppenderRef ref="SyncFile"/>
+            <bufferSize>1024</bufferSize>  <!-- Queue size -->
+        </Async>
+    </Appenders>
+    
+    <Loggers>
+        <Root level="INFO">
+            <AppenderRef ref="AsyncFile"/>  <!-- Use the async version -->
+        </Root>
+    </Loggers>
+</Configuration>
+```
+
+### Logback Async Logging
+
+```xml
+<configuration>
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>logs/app.log</file>
+        <encoder>
+            <pattern>%d %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="FILE"/>
+        <queueSize>1024</queueSize>
+        <discardingThreshold>0</discardingThreshold>  <!-- Don't discard any logs -->
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="ASYNC"/>
+    </root>
+</configuration>
+```
+
+```
+⚠️ Warning about Async Logging:
+  - If the app crashes, some log messages in the queue might be LOST
+    (they haven't been written to disk yet)
+  - For CRITICAL logs (like financial transactions), use synchronous logging
+  - For INFO/DEBUG logs, async is fine and much faster
+```
+
+---
+
 *Previous: [10-Mockito-Mocking.md](10-Mockito-Mocking.md)*
 *Next: [12-Code-Quality-Analysis.md](12-Code-Quality-Analysis.md)*

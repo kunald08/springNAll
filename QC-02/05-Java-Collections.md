@@ -825,5 +825,189 @@ Need LIFO (stack)?
 
 ---
 
+## Concurrent Collections — Thread-Safe Collections for Multi-Threaded Programs
+
+### The Problem: Regular Collections Aren't Thread-Safe
+
+When multiple threads read and write to a regular `ArrayList` or `HashMap` at the same time, bad things happen — you get corrupted data, `ConcurrentModificationException`, or weird bugs that are super hard to find.
+
+```
+Thread 1: adds item to ArrayList                    Thread 2: reads item from ArrayList
+         ↓                                                    ↓
+   ArrayList internal array: [A, B, _, _]             reads size = 2
+   adds C → size becomes 3                            tries to get index 2 → CRASH!
+   [A, B, C, _]                                       (size was 2 when it checked!)
+
+This is a RACE CONDITION — the result depends on which thread runs first.
+```
+
+### Solution 1: `Collections.synchronizedList()` — The Quick Fix
+
+This wraps a regular collection with synchronized access. It's like putting a lock on the door — only one thread can enter at a time.
+
+```java
+// Wrap any collection to make it "synchronized"
+List<String> syncList = Collections.synchronizedList(new ArrayList<>());
+Map<String, Integer> syncMap = Collections.synchronizedMap(new HashMap<>());
+Set<String> syncSet = Collections.synchronizedSet(new HashSet<>());
+
+// Individual operations are safe:
+syncList.add("A");      // Thread-safe ✅
+syncList.get(0);        // Thread-safe ✅
+
+// BUT iteration is NOT automatically safe! You must synchronize manually:
+synchronized (syncList) {          // ← You MUST do this!
+    for (String item : syncList) {
+        System.out.println(item);
+    }
+}
+```
+
+**Downside:** Only one thread can access the collection at a time → **slow** when many threads are involved. It's like having a single bathroom for 100 people.
+
+### Solution 2: `ConcurrentHashMap` — The Smart, Fast Map
+
+`ConcurrentHashMap` is the go-to thread-safe map. Instead of locking the ENTIRE map, it only locks **small segments** — so multiple threads can read and write to different parts simultaneously.
+
+```java
+// Create a concurrent map
+ConcurrentHashMap<String, Integer> wordCount = new ConcurrentHashMap<>();
+
+// Thread-safe operations:
+wordCount.put("hello", 1);           // Thread-safe ✅
+wordCount.get("hello");              // Thread-safe ✅ (no locking needed for reads!)
+wordCount.putIfAbsent("hello", 1);   // Only puts if key doesn't exist — atomic!
+
+// Atomic compute operations (check-then-act, safely):
+wordCount.compute("hello", (key, oldVal) -> oldVal == null ? 1 : oldVal + 1);
+// ↑ This is ATOMIC — no race condition even with multiple threads!
+
+// Or simpler:
+wordCount.merge("hello", 1, Integer::sum);
+// ↑ If "hello" exists, add 1 to its value. If not, set it to 1. Atomic!
+
+// Safe iteration — no ConcurrentModificationException!
+wordCount.forEach((key, value) -> {
+    System.out.println(key + ": " + value);
+});
+```
+
+```
+How ConcurrentHashMap works internally:
+
+synchronized HashMap (old way — locks EVERYTHING):
+┌──────────────────────────────────────┐
+│  🔒 ONE LOCK for the entire map      │
+│  Thread 1 writes → ALL threads wait  │
+└──────────────────────────────────────┘
+
+ConcurrentHashMap (new way — locks SEGMENTS):
+┌──────────┬──────────┬──────────┐
+│ Segment 1│ Segment 2│ Segment 3│
+│ 🔒       │ 🔒       │ 🔒       │
+│Thread 1  │Thread 2  │Thread 3  │ ← All three work at the same time!
+│writes    │writes    │writes    │
+└──────────┘──────────┘──────────┘
+
+Result: Much faster because threads don't block each other (usually)!
+```
+
+### Solution 3: `CopyOnWriteArrayList` — Best for Mostly-Read Lists
+
+Every time you **write** (add/remove), it creates a **brand new copy** of the entire underlying array. Reads never block, never throw exceptions, and are super fast because they just read the current snapshot.
+
+```java
+CopyOnWriteArrayList<String> list = new CopyOnWriteArrayList<>();
+
+list.add("A");   // Creates a new internal array copy
+list.add("B");   // Creates another new copy
+
+// Reads are always safe and fast — no locking!
+String item = list.get(0);  // ✅ Always safe
+
+// Iteration is always safe — it iterates over a SNAPSHOT
+for (String s : list) {
+    // Even if another thread adds/removes items RIGHT NOW,
+    // this loop won't crash or see those changes.
+    // It's reading a frozen snapshot taken when the loop started.
+    System.out.println(s);
+}
+```
+
+**When to use it:**
+- Event listeners (you add listeners once, but fire events thousands of times)
+- Configuration lists (set up once, read many times)
+- Any scenario where reads >>> writes
+
+**When NOT to use it:**
+- Frequent writes (each write copies the whole array → expensive!)
+- Large lists with many modifications
+
+### Solution 4: `BlockingQueue` — Producer-Consumer Pattern
+
+A queue where threads can **wait** for items to appear (consumer blocks until something is available) or wait for space (producer blocks until there's room). Perfect for passing work between threads.
+
+```java
+// Create a blocking queue with capacity 10
+BlockingQueue<String> queue = new ArrayBlockingQueue<>(10);
+
+// Producer thread:
+Thread producer = new Thread(() -> {
+    try {
+        queue.put("Task 1");   // Blocks if queue is full (10 items)!
+        queue.put("Task 2");   // Waits patiently until space is available
+        queue.put("Task 3");
+    } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+    }
+});
+
+// Consumer thread:
+Thread consumer = new Thread(() -> {
+    try {
+        String task = queue.take();  // Blocks if queue is empty!
+        // Waits patiently until a task appears
+        System.out.println("Processing: " + task);
+    } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+    }
+});
+```
+
+```
+BlockingQueue implementations:
+
+ArrayBlockingQueue  — Fixed-size, backed by an array. Bounded.
+LinkedBlockingQueue — Optionally bounded, backed by linked nodes. Default capacity = Integer.MAX_VALUE
+PriorityBlockingQueue — Unbounded, elements are dequeued by priority
+SynchronousQueue    — Zero capacity! Each put() waits for a matching take(). Direct hand-off.
+```
+
+### Quick Comparison: Which Thread-Safe Collection to Use?
+
+```
+Need a thread-safe Map?
+  → ConcurrentHashMap (almost always the right choice)
+
+Need a thread-safe List?
+  Mostly reads, rare writes?  → CopyOnWriteArrayList
+  Frequent reads AND writes?  → Collections.synchronizedList(new ArrayList<>())
+
+Need a thread-safe Set?
+  → ConcurrentHashMap.newKeySet()  (backed by ConcurrentHashMap)
+  → CopyOnWriteArraySet (if mostly reads)
+
+Need producer-consumer pattern?
+  → ArrayBlockingQueue (bounded)
+  → LinkedBlockingQueue (optionally bounded)
+
+⚠️ AVOID these legacy classes:
+  Vector       → Use ArrayList + synchronization or CopyOnWriteArrayList
+  Hashtable    → Use ConcurrentHashMap
+  Stack        → Use ArrayDeque (for single-thread) or ConcurrentLinkedDeque (multi-thread)
+```
+
+---
+
 *Previous: [04-Java-OOP.md](04-Java-OOP.md)*
 *Next: [06-Java-Advanced.md](06-Java-Advanced.md)*

@@ -657,10 +657,12 @@ Behavioral patterns deal with **communication between objects**.
 
 **One-to-many dependency**: when one object changes, all dependents are notified.
 
+Think of it like subscribing to a YouTube channel. When the YouTuber uploads a new video, ALL subscribers get notified automatically. The YouTuber doesn't need to know who the subscribers are — they just broadcast "new video!" and everyone who subscribed gets the update.
+
 ```java
 import java.util.*;
 
-// Subject (Observable)
+// Subject (Observable) — the "YouTuber"
 public class NewsAgency {
     private String news;
     private List<NewsSubscriber> subscribers = new ArrayList<>();
@@ -685,7 +687,7 @@ public class NewsAgency {
     }
 }
 
-// Observer
+// Observer — the "subscriber"
 public interface NewsSubscriber {
     void update(String news);
 }
@@ -715,6 +717,8 @@ agency.setNews("Breaking: Java 25 released!");
 ### Strategy Pattern
 
 **Defines a family of algorithms** and makes them interchangeable at runtime.
+
+Think of Google Maps: you enter a destination, then choose driving, walking, or cycling. The app uses a DIFFERENT algorithm for each, but the interface is the same — you still get directions from A to B. That's the Strategy pattern.
 
 ```java
 // Strategy interface
@@ -803,18 +807,349 @@ for (int n : new NumberRange(1, 5)) {
 
 ---
 
-## 7. Pattern Summary
+## 7. Builder Pattern
+
+### The Problem
+
+Some objects have **many parameters**, some required, some optional. Using a constructor with 10 parameters is confusing and error-prone — which number was the age and which was the zipcode?
+
+```java
+// ❌ BAD — "Telescoping Constructor" anti-pattern
+// What do these numbers mean?! Which is age, which is zipcode?
+User user = new User("Kunal", "kunal@email.com", 25, "123 Main St", 
+                      "Mumbai", "MH", 400001, "India", "1234567890", true);
+```
+
+### The Solution: Builder Pattern
+
+The Builder pattern lets you construct an object **step by step** with clear, readable method names.
+
+```java
+public class User {
+    // Required fields
+    private final String name;
+    private final String email;
+    
+    // Optional fields
+    private final int age;
+    private final String address;
+    private final String phone;
+    private final boolean isActive;
+
+    // Private constructor — can ONLY be called from the Builder
+    private User(Builder builder) {
+        this.name = builder.name;
+        this.email = builder.email;
+        this.age = builder.age;
+        this.address = builder.address;
+        this.phone = builder.phone;
+        this.isActive = builder.isActive;
+    }
+
+    // The Builder — a static inner class
+    public static class Builder {
+        // Required fields
+        private final String name;
+        private final String email;
+        
+        // Optional fields with defaults
+        private int age = 0;
+        private String address = "";
+        private String phone = "";
+        private boolean isActive = true;
+
+        // Builder constructor takes REQUIRED fields only
+        public Builder(String name, String email) {
+            this.name = name;
+            this.email = email;
+        }
+
+        // Each optional field has a setter that returns the Builder itself
+        // This enables "method chaining" (fluent API)
+        public Builder age(int age) {
+            this.age = age;
+            return this;          // ← returns "this" so you can chain!
+        }
+
+        public Builder address(String address) {
+            this.address = address;
+            return this;
+        }
+
+        public Builder phone(String phone) {
+            this.phone = phone;
+            return this;
+        }
+
+        public Builder isActive(boolean isActive) {
+            this.isActive = isActive;
+            return this;
+        }
+
+        // The build() method creates the actual User object
+        public User build() {
+            return new User(this);
+        }
+    }
+}
+```
+
+```java
+// ✅ GOOD — Builder pattern usage. Clear and readable!
+User user = new User.Builder("Kunal", "kunal@email.com")
+    .age(25)
+    .address("123 Main St, Mumbai")
+    .phone("1234567890")
+    .isActive(true)
+    .build();
+
+// Only required fields? No problem!
+User minimalUser = new User.Builder("Priya", "priya@email.com").build();
+
+// You can pick and choose which optional fields to set:
+User partialUser = new User.Builder("Amit", "amit@email.com")
+    .age(30)
+    .build();   // address, phone use defaults
+```
+
+**Real-world Java examples of the Builder pattern:**
+- `StringBuilder` — build strings step by step
+- `Stream.builder()` — build streams
+- `HttpRequest.newBuilder()` — Java 11 HTTP client
+- Lombok's `@Builder` annotation — generates all this code for you!
+
+```java
+// With Lombok (saves you from writing the Builder class manually):
+@Builder
+public class User {
+    private String name;
+    private String email;
+    private int age;
+    private String address;
+}
+
+// Usage is the same:
+User user = User.builder()
+    .name("Kunal")
+    .email("kunal@email.com")
+    .age(25)
+    .build();
+```
+
+---
+
+## 8. Facade Pattern
+
+### What is a Facade?
+
+A **Facade** (pronounced "fuh-SAHD") provides a **simple interface** to a complex system. Think of it like a TV remote — you press "ON" and the TV turns on, selects the right input, adjusts volume, and connects to Wi-Fi. You don't care about all those internal steps; you just want to watch TV. The remote is the facade.
+
+```
+Without Facade (client talks to many complex subsystems):
+
+   Your Code
+     │
+     ├──► SubsystemA.init()
+     ├──► SubsystemA.configure(config)
+     ├──► SubsystemB.connect()
+     ├──► SubsystemB.authenticate(user, pass)
+     ├──► SubsystemC.loadData()
+     └──► SubsystemC.transform()
+     
+   You need to know about ALL subsystems and their details. Complex!
+
+With Facade (client talks to ONE simple interface):
+
+   Your Code ──► Facade.doEverything()
+                   │
+                   ├──► SubsystemA.init()
+                   ├──► SubsystemA.configure(config)
+                   ├──► SubsystemB.connect()
+                   ├──► SubsystemB.authenticate(user, pass)
+                   ├──► SubsystemC.loadData()
+                   └──► SubsystemC.transform()
+                   
+   ONE method call. The complexity is hidden behind the Facade.
+```
+
+### Example: Home Theater Facade
+
+```java
+// Complex subsystems:
+class DVDPlayer {
+    void on() { System.out.println("DVD Player ON"); }
+    void play(String movie) { System.out.println("Playing: " + movie); }
+    void off() { System.out.println("DVD Player OFF"); }
+}
+
+class Projector {
+    void on() { System.out.println("Projector ON"); }
+    void setInput(String input) { System.out.println("Input set to: " + input); }
+    void off() { System.out.println("Projector OFF"); }
+}
+
+class SoundSystem {
+    void on() { System.out.println("Sound System ON"); }
+    void setVolume(int level) { System.out.println("Volume: " + level); }
+    void off() { System.out.println("Sound System OFF"); }
+}
+
+class Lights {
+    void dim(int level) { System.out.println("Lights dimmed to: " + level + "%"); }
+    void on() { System.out.println("Lights ON"); }
+}
+
+// ✅ Facade — hides all the complexity behind ONE simple method
+class HomeTheaterFacade {
+    private DVDPlayer dvd;
+    private Projector projector;
+    private SoundSystem sound;
+    private Lights lights;
+
+    public HomeTheaterFacade(DVDPlayer dvd, Projector projector,
+                             SoundSystem sound, Lights lights) {
+        this.dvd = dvd;
+        this.projector = projector;
+        this.sound = sound;
+        this.lights = lights;
+    }
+
+    // One method to rule them all!
+    public void watchMovie(String movie) {
+        System.out.println("--- Setting up movie night ---");
+        lights.dim(10);
+        projector.on();
+        projector.setInput("DVD");
+        sound.on();
+        sound.setVolume(50);
+        dvd.on();
+        dvd.play(movie);
+    }
+
+    public void endMovie() {
+        System.out.println("--- Shutting down ---");
+        dvd.off();
+        sound.off();
+        projector.off();
+        lights.on();
+    }
+}
+
+// Usage — SO much simpler!
+HomeTheaterFacade theater = new HomeTheaterFacade(dvd, projector, sound, lights);
+theater.watchMovie("The Matrix");  // One call does EVERYTHING!
+theater.endMovie();                // Clean shutdown in one call!
+```
+
+**Where you see Facade in real Java:**
+- `javax.faces.context.FacesContext` — in JSF (Java Server Faces)
+- Spring's `JdbcTemplate` — facade over raw JDBC (no more Connection/Statement/ResultSet management!)
+- SLF4J — facade over multiple logging frameworks
+
+---
+
+## 9. Template Method Pattern
+
+### What is it?
+
+The **Template Method** pattern defines the **skeleton of an algorithm** in a base class, but lets subclasses **fill in specific steps** without changing the overall structure.
+
+Think of making a hot beverage: whether it's tea or coffee, the steps are the same:
+1. Boil water
+2. Brew the drink (tea leaves or coffee grounds — this step DIFFERS)
+3. Pour into cup
+4. Add condiments (lemon or milk — this step DIFFERS)
+
+The template (overall recipe) stays the same, but some steps are customized.
+
+```java
+// Abstract class with the TEMPLATE METHOD
+abstract class HotBeverage {
+    
+    // THIS is the template method — defines the algorithm's structure
+    // It's "final" so subclasses can't change the overall order!
+    public final void prepare() {
+        boilWater();          // Step 1 — same for everyone
+        brew();               // Step 2 — DIFFERENT for each drink
+        pourInCup();          // Step 3 — same for everyone
+        addCondiments();      // Step 4 — DIFFERENT for each drink
+    }
+    
+    private void boilWater() {
+        System.out.println("Boiling water...");
+    }
+    
+    private void pourInCup() {
+        System.out.println("Pouring into cup...");
+    }
+    
+    // Abstract methods — subclasses MUST implement these
+    protected abstract void brew();
+    protected abstract void addCondiments();
+}
+
+// Concrete class — Tea
+class Tea extends HotBeverage {
+    protected void brew() {
+        System.out.println("Steeping tea bag for 3 minutes");
+    }
+    
+    protected void addCondiments() {
+        System.out.println("Adding lemon");
+    }
+}
+
+// Concrete class — Coffee
+class Coffee extends HotBeverage {
+    protected void brew() {
+        System.out.println("Dripping coffee through filter");
+    }
+    
+    protected void addCondiments() {
+        System.out.println("Adding sugar and milk");
+    }
+}
+
+// Usage:
+HotBeverage myDrink = new Tea();
+myDrink.prepare();
+// Output:
+// Boiling water...
+// Steeping tea bag for 3 minutes
+// Pouring into cup...
+// Adding lemon
+
+HotBeverage myOtherDrink = new Coffee();
+myOtherDrink.prepare();
+// Output:
+// Boiling water...
+// Dripping coffee through filter
+// Pouring into cup...
+// Adding sugar and milk
+```
+
+**Where you see Template Method in real Java:**
+- `HttpServlet` — you override `doGet()`, `doPost()`, but the servlet container calls `service()` which routes to them
+- `JUnit` — the test runner calls `@BeforeEach` → test method → `@AfterEach` (you just fill in the test)
+- Spring's `JdbcTemplate` — the template handles connection/exception/closing, you just provide the SQL and row mapping
+
+---
+
+## 10. Pattern Summary
 
 | Pattern | Type | Purpose | Real-World Analogy |
 |---|---|---|---|
 | **Singleton** | Creational | One instance only | President of a country |
 | **Factory** | Creational | Create without specifying class | Restaurant — order "burger", kitchen decides how to make it |
 | **Abstract Factory** | Creational | Family of related objects | Furniture factory — modern set or Victorian set |
+| **Builder** | Creational | Construct complex objects step by step | Subway sandwich — choose bread, meat, veggies, sauce |
 | **Adapter** | Structural | Convert interface | Power adapter (US plug → EU socket) |
 | **Decorator** | Structural | Add behavior dynamically | Adding toppings to pizza |
+| **Facade** | Structural | Simple interface to complex system | TV remote — one button does many things |
 | **Proxy** | Structural | Control access | Security guard at a building |
-| **Observer** | Behavioral | One-to-many notification | Newsletter subscription |
+| **Observer** | Behavioral | One-to-many notification | YouTube subscription |
 | **Strategy** | Behavioral | Swap algorithms | Google Maps — driving, walking, or cycling route |
+| **Template Method** | Behavioral | Define algorithm skeleton, fill in steps | Recipe — same steps, different ingredients |
 | **Iterator** | Behavioral | Sequential access | TV remote channel-by-channel |
 
 ### When to Use What
@@ -822,11 +1157,14 @@ for (int n : new NumberRange(1, 5)) {
 ```
 Need exactly one instance?                        → Singleton
 Need to create objects without specifying class?  → Factory
+Need to build objects step by step?               → Builder
 Need to convert one interface to another?         → Adapter
 Need to add features without modifying class?     → Decorator
+Need a simple interface to complex subsystem?     → Facade
 Need to control/delay access to an object?        → Proxy
 Need to notify many objects of a change?          → Observer
 Need to swap algorithms at runtime?               → Strategy
+Need same algorithm structure, different steps?   → Template Method
 Need to traverse a collection uniformly?          → Iterator
 ```
 

@@ -1462,9 +1462,14 @@ System.out.println(c.equals(d));  // true ✅
 
 ## 21. Debugging in IntelliJ
 
+### Why Debugging Matters
+
+Using `System.out.println()` to find bugs is like trying to find a leak in your house by flooding every room and seeing which one fills up — it works, but it's messy, slow, and you have to clean up afterward (remove all those print statements). A **debugger** lets you freeze your program at any point, look at every variable's value, and step through code line by line — like having X-ray vision into your running program.
+
 ### Setting Breakpoints
 - Click in the **gutter** (left margin) next to a line number → red dot appears.
 - The program pauses BEFORE executing that line.
+- You can set as many breakpoints as you want. The program will stop at each one.
 
 ### Debug Controls
 
@@ -1476,24 +1481,79 @@ System.out.println(c.equals(d));  // true ✅
 │  ⤊ Step Out (Shift+F8) — Finish current method, return   │
 │  ⟲ Run to Cursor     — Run to where your cursor is       │
 └──────────────────────────────────────────────────────────┘
+
+When to use each:
+  Step Over  → When you trust the method works and just want to go to the next line
+  Step Into  → When you suspect the bug is INSIDE the method being called
+  Step Out   → When you accidentally stepped into a method and want to go back
+  Resume     → When you want to skip ahead to the next breakpoint
 ```
 
 ### Debug Panels
 
 ```
-Variables Panel: Shows all variables in current scope and their values
-Watches Panel:   Add custom expressions to monitor (e.g., arr.length, x > 5)
-Call Stack:      Shows the chain of method calls that led to current point
-Console:         Shows program output and lets you evaluate expressions
+Variables Panel: Shows all variables in current scope and their values.
+                 You can even CHANGE a variable's value while debugging!
+                 Right-click a variable → Set Value → type new value.
+
+Watches Panel:   Add custom expressions to monitor (e.g., arr.length, x > 5, 
+                 list.get(0).getName()). These update live as you step through.
+
+Call Stack:      Shows the chain of method calls that led to current point.
+                 Example: main() → processOrder() → calculateTax() → HERE
+                 You can click on any frame to see what variables looked like there.
+
+Console:         Shows program output and lets you evaluate expressions.
 ```
 
 ### Conditional Breakpoints
 - Right-click a breakpoint → enter a condition (e.g., `i == 42`).
 - Breakpoint only triggers when the condition is true.
+- **Super useful in loops!** If a bug happens on iteration 500, you don't want to step through 499 iterations manually.
+
+```java
+// Suppose you have this loop and something breaks when i is 42:
+for (int i = 0; i < 1000; i++) {
+    process(items.get(i));  // ← Set breakpoint with condition: i == 42
+                            //    Program runs normally until i hits 42, THEN pauses
+}
+```
 
 ### Evaluate Expression
 - During debugging, press **Alt+F8** → type any expression → see its result.
 - Useful for testing what-if scenarios without changing code.
+- You can call methods, do math, check conditions — anything!
+
+```
+Examples of expressions you can evaluate:
+  user.getName()                    → "Kunal"
+  list.size()                       → 42
+  salary * 1.10                     → 66000.0
+  name != null && name.length() > 5 → true
+  Arrays.toString(myArray)          → "[1, 2, 3, 4, 5]"
+```
+
+### Debugging in VS Code
+
+If you're using VS Code instead of IntelliJ, the process is almost identical:
+1. Click in the gutter to set a breakpoint (red dot)
+2. Press **F5** to start debugging (instead of IntelliJ's debug button)
+3. Use the floating debug toolbar for Step Over / Step Into / Step Out / Continue
+4. The Variables, Watch, and Call Stack panels are in the left sidebar during debug
+
+### Common Debugging Tips
+
+```
+1. START with a breakpoint just BEFORE where you think the bug is
+2. Check variable values — is the input what you expected?
+3. Step through line by line and watch which path the code takes
+4. For NullPointerException: set a breakpoint on the line that throws it,
+   then check which variable is null
+5. For wrong output: set a breakpoint where the result is calculated,
+   then check the inputs going into the calculation
+6. Use the Call Stack to trace HOW you got to the current point
+7. Don't forget to remove breakpoints when you're done!
+```
 
 ---
 

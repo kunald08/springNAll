@@ -698,6 +698,254 @@ Recommended setup for a project:
 
 ---
 
+## SonarLint — Get SonarQube Feedback Right in Your IDE
+
+### What is SonarLint?
+
+**SonarLint** is a free IDE plugin (available for IntelliJ, VS Code, Eclipse) that gives you **real-time code quality feedback** as you type — just like how a spell-checker underlines typos. It catches bugs, code smells, security vulnerabilities, and more, BEFORE you even commit your code.
+
+Think of SonarQube as the "server-side report card" and SonarLint as the "in-class tutor" — SonarLint catches issues while you code, SonarQube catches them in the CI pipeline.
+
+### How to Set It Up
+
+```
+IntelliJ IDEA:
+  1. File → Settings → Plugins → Search "SonarLint" → Install
+  2. Restart IntelliJ
+  3. SonarLint automatically starts analyzing your code!
+  4. You'll see issues highlighted with yellow/red underlines
+
+VS Code:
+  1. Extensions → Search "SonarLint" → Install (publisher: SonarSource)
+  2. It works immediately for Java, JavaScript, Python, etc.
+
+Eclipse:
+  1. Help → Eclipse Marketplace → Search "SonarLint" → Install
+```
+
+### Connecting SonarLint to SonarQube (Connected Mode)
+
+By default, SonarLint uses its own built-in rules. But if your team uses a SonarQube server with **custom quality profiles**, you can connect them:
+
+```
+Connected Mode means:
+  - SonarLint uses the SAME rules as your SonarQube server
+  - If the team disables a rule on SonarQube, SonarLint won't show it either
+  - Issues match between your IDE and the CI pipeline
+  - No surprises when you push code!
+
+Steps (IntelliJ):
+  1. Settings → Tools → SonarLint → + Add SonarQube Connection
+  2. Enter your SonarQube server URL and authentication token
+  3. Bind your project to the SonarQube project
+  4. SonarLint downloads the team's quality profile and uses those rules
+```
+
+### What SonarLint Catches (Examples)
+
+```java
+// ❌ SonarLint says: "Cognitive Complexity of this method is 18, higher than 15 allowed"
+// Translation: Your method is too complicated. Break it into smaller methods.
+
+// ❌ SonarLint says: "Remove this unused private method"
+private void helperMethod() { ... }  // Never called anywhere!
+
+// ❌ SonarLint says: "Use try-with-resources instead"
+FileInputStream fis = new FileInputStream("file.txt");
+// ... use fis ...
+fis.close();  // What if an exception occurs before this line? Resource leak!
+
+// ✅ Fix:
+try (FileInputStream fis = new FileInputStream("file.txt")) {
+    // ... use fis ...
+}  // Automatically closed, even if exception occurs!
+```
+
+---
+
+## How the Tools Work Together
+
+In a real project, these tools form a **layered defense** against bad code. Here's how they fit together: 
+
+```
+Developer writes code
+        │
+        ▼
+  ┌─────────────────┐
+  │   SonarLint      │  ← Catches issues IN YOUR IDE as you type
+  │   (IDE Plugin)   │     Instant feedback. Before you even save!
+  └────────┬────────┘
+           │
+     git commit + push
+           │
+           ▼
+  ┌─────────────────────────────────────────────────┐
+  │   CI Pipeline (GitHub Actions / Jenkins)         │
+  │                                                  │
+  │   Step 1: mvn checkstyle:check                  │  ← Style check
+  │   Step 2: mvn pmd:check                         │  ← Bad practices
+  │   Step 3: mvn spotbugs:check                    │  ← Real bugs
+  │   Step 4: mvn test                              │  ← Run tests
+  │   Step 5: mvn jacoco:report                     │  ← Coverage report
+  │   Step 6: mvn sonar:sonar                       │  ← Send ALL results to SonarQube
+  │                                                  │
+  └────────┬────────────────────────────────────────┘
+           │
+           ▼
+  ┌─────────────────┐
+  │   SonarQube      │  ← Aggregates everything into a dashboard
+  │   (Server)       │     Quality Gate: PASS or FAIL
+  │                  │     Shows trends over time
+  │   If FAIL ───────┼───► Block the merge/deployment!
+  └─────────────────┘
+
+The key: JaCoCo generates coverage data → SonarQube reads it
+         PMD, Checkstyle, SpotBugs find issues → SonarQube aggregates them
+         SonarLint in IDE uses same rules → No surprises in CI
+```
+
+### Maven Config for All Tools Together
+
+```xml
+<build>
+    <plugins>
+        <!-- JaCoCo — must run BEFORE tests to instrument code -->
+        <plugin>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <executions>
+                <execution>
+                    <goals><goal>prepare-agent</goal></goals>
+                </execution>
+                <execution>
+                    <id>report</id>
+                    <phase>test</phase>
+                    <goals><goal>report</goal></goals>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
+
+<!-- Then in CI, run: mvn clean verify sonar:sonar -->
+<!-- This runs tests → generates JaCoCo report → sends everything to SonarQube -->
+```
+
+---
+
+## Reverse Engineering — Understanding Existing Code
+
+### What is Reverse Engineering?
+
+**Reverse engineering** in software means taking an existing system (that you didn't write) and figuring out how it works — its structure, designs, and purpose. Think of it like being handed a finished puzzle and needing to understand the picture AND how the pieces fit together.
+
+This is a crucial skill because in the real world, you'll spend more time reading and understanding existing code than writing new code.
+
+### Why Do We Need It?
+
+```
+Common scenarios:
+  1. You join a new team → need to understand a 500,000-line codebase
+  2. Legacy system with no documentation → need to figure out how it works
+  3. Third-party library → need to understand its internals to debug an issue
+  4. System migration → need to understand the old system to build the new one
+  5. Security analysis → need to find vulnerabilities in existing software
+```
+
+### Steps for Reverse Engineering a Java Codebase
+
+```
+Step 1: GET THE BIG PICTURE
+  - Read the README, wiki, architecture docs (if any exist)
+  - Look at the project structure (module names, package names)
+  - Find the main() method or entry point
+  - Identify the major frameworks used (Spring Boot? Hibernate? etc.)
+
+Step 2: UNDERSTAND THE ARCHITECTURE
+  - Draw a diagram of the main modules/packages and their dependencies
+  - Identify the layers: Controller → Service → Repository → Database
+  - Find configuration files (application.properties, pom.xml)
+  - Map out the database schema (tables, relationships)
+
+Step 3: TRACE THE CODE FLOW
+  - Pick a feature (e.g., "user login") and trace it end-to-end
+  - Start from the API endpoint/controller → follow the method calls
+  - Use your IDE's "Go to Definition" (Ctrl+Click) and "Find Usages"
+  - Use the debugger to step through the code with real data
+
+Step 4: DOCUMENT WHAT YOU FIND
+  - Create or update architecture diagrams
+  - Add comments to confusing code sections
+  - Write down assumptions and verify them with the team
+```
+
+### Tools for Reverse Engineering
+
+```
+IDE Features:
+  - "Find Usages" (Alt+F7 in IntelliJ) — who calls this method?
+  - "Call Hierarchy" (Ctrl+Alt+H) — what's the call chain?
+  - "Type Hierarchy" (Ctrl+H) — class inheritance tree
+  - "Structure" view — overview of a class's methods and fields
+  - Debugger — step through code to see actual runtime behavior
+
+Diagram Generation:
+  - IntelliJ UML Diagrams — auto-generate class diagrams from code
+  - PlantUML — write text, get diagrams
+  - draw.io — manual diagramming (free)
+
+Database Reverse Engineering:
+  - DBeaver — free tool to visualize database schema, generate ER diagrams
+  - Oracle SQL Developer — view tables, relationships, generate DDL
+  - SchemaSpy — auto-generates database documentation from a live database
+
+Code Analysis Tools:
+  - SonarQube — shows complexity hotspots, code smells, dependencies
+  - JDepend — analyzes package dependencies, finds circular dependencies
+  - Structure101 — visualizes architecture and finds violations
+  
+Decompilers (for .class files when you don't have source):
+  - JD-GUI — open .jar files and see decompiled Java source
+  - IntelliJ built-in decompiler — just open any .class file!
+  - CFR — command-line decompiler with modern Java support
+```
+
+### Reverse Engineering a Database
+
+```sql
+-- Get all tables in a schema:
+SELECT table_name FROM user_tables ORDER BY table_name;
+
+-- Get columns for a specific table:
+DESCRIBE employees;
+
+-- Find all foreign key relationships:
+SELECT a.table_name, a.column_name, 
+       c.table_name AS referenced_table,
+       c.column_name AS referenced_column
+FROM user_cons_columns a
+JOIN user_constraints b ON a.constraint_name = b.constraint_name
+JOIN user_cons_columns c ON b.r_constraint_name = c.constraint_name
+WHERE b.constraint_type = 'R'
+ORDER BY a.table_name;
+
+-- This gives you the relationships between tables!
+-- Now you can draw an ER diagram.
+```
+
+```
+Tips for Reverse Engineering:
+  ✅ Start with the entry point and follow the happy path first
+  ✅ Use the debugger — it's faster than reading code
+  ✅ Draw diagrams as you go (even rough ones on paper)
+  ✅ Ask the team! (if possible) — save hours of guessing
+  ✅ Look at tests — they often reveal how the code is meant to be used
+  ❌ Don't try to understand EVERYTHING at once — focus on one feature at a time
+  ❌ Don't skip reading config files (they explain a LOT about the system)
+```
+
+---
+
 *Previous: [11-Logging.md](11-Logging.md)*
 *This is the final file in the series!*
 
