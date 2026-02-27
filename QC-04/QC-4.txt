@@ -1,0 +1,53 @@
+QC-04
+=======
+Python
+Django
+
+==================
+Python
+Python Syntax
+Variables and Types
+Numbers, Strings, Booleans
+Python Operators
+Arithmetic, Comparison, Logical
+Program Flow
+if-else, Loops (for, while)
+
+Defining Functions
+Parameters and Arguments
+Return Values
+Lambda Functions
+Lists
+List Operations and Methods
+Collections - Tuples
+Tuple Operations
+Collections - Dictionary
+Dictionary Operations
+Sets and Set Operations
+
+Object Oriented Programming (OOP)
+Classes and Objects
+Constructors (__init__)
+Inheritance
+Polymorphism
+Encapsulation
+File I/O
+Reading Files
+Writing Files
+
+Exception Handling
+try-except-finally
+Modules
+Python Modules and Packages
+Import Statements
+Django Framework
+Django Installation
+Django Project Structure
+Django Apps
+Settings Configuration
+Django Models, Django ORM
+Django Views and Templates
+URL Configuration, Django Admin
+
+Django REST Framework
+Serializers, API Views, Authentication
