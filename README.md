@@ -57,8 +57,8 @@ A comprehensive study and reference repository covering full-stack Java developm
 | Collections | [04-Python-Collections.md](QC-04/04-Python-Collections.md) | [Interview](QC-04/interview-ques-ans/04-Python-Collections-Interview.md) |
 | OOP | [05-Python-OOP.md](QC-04/05-Python-OOP.md) | [Interview](QC-04/interview-ques-ans/05-Python-OOP-Interview.md) |
 | File I/O, Exceptions & Modules | [06-Python-FileIO-Exceptions-Modules.md](QC-04/06-Python-FileIO-Exceptions-Modules.md) | [Interview](QC-04/interview-ques-ans/06-Python-FileIO-Exceptions-Interview.md) |
-| Django Framework | [07-Django-Framework.md](QC-04/07-Django-Framework.md) | [Interview](QC-04/interview-ques-ans/07-Django-Interview.md) |
-| Django REST Framework | [08-Django-REST-Framework.md](QC-04/08-Django-REST-Framework.md) | [Interview](QC-04/interview-ques-ans/08-Django-REST-Interview.md) |
+| Django Framework | [07-Django-Framework.md](QC-04/07-Django-Framework.md) | [Interview](QC-04/interview-ques-ans/07-Django-Framework-Interview.md) |
+| Django REST Framework | [08-Django-REST-Framework.md](QC-04/08-Django-REST-Framework.md) | [Interview](QC-04/interview-ques-ans/08-Django-REST-Framework-Interview.md) |
 
 ### Problems
 - [Java Interview Problems](Problems/Java-Interview-Problems.md)
