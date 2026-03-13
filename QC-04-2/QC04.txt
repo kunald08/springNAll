@@ -1,0 +1,49 @@
+QC04
+======
+
+Introduction to Debugging
+Getting Started with IntelliJ IDEA Debugger
+Setting Breakpoints
+Step Over, Step Into, Step Out
+Watch Variables, Debug Console
+
+Introduction to ITIL 4
+Service Management
+Four Dimensions of Service Management
+ITIL 4 Service Value System (SVS)
+ITIL 4 Service Value Chain (SVC)
+ITIL 4 Practices
+ITIL 4 Guiding Principles
+ITIL 4 Continual Improvement
+
+Introduction to JIRA
+Getting Started with JIRA
+Working with Issues in JIRA
+JIRA Workflows
+JIRA Administration
+Agile Boards (Scrum, Kanban)
+Reporting and Dashboards
+
+Introduction to ServiceNow
+ServiceNow Architecture
+ServiceNow Modules and Applications
+ServiceNow Administration
+ServiceNow ITSM
+Devops Overview
+Continuous Deployment
+Continuous Delivery
+Jenkins Overview
+Jenkins Job Project
+Continuous Integration
+Introduction to Windows Service
+Java Integration with Windows Service
+
+Scheduling Jobs in Java
+Communication Between Service and Java
+Error Handling and Logging
+WebSphere Application Server
+WebSphere Architecture
+Application Deployment
+IaaS, PaaS, SaaS
+Cloud Providers (AWS, Azure, GCP)
+Cloud Services Overview
