@@ -273,24 +273,24 @@ Behavioral Diagrams (what the system DOES):
 
 ```
 ┌─────────────────────────┐
-│      <<interface>>       │   Stereotype
-│       Flyable            │   Interface name
+│      <<interface>>      │   Stereotype
+│       Flyable           │   Interface name
 ├─────────────────────────┤
-│                          │   No attributes
+│                         │   No attributes
 ├─────────────────────────┤
-│ + fly(): void            │   Method
+│ + fly(): void           │   Method
 └─────────────────────────┘
 
 ┌─────────────────────────┐
-│        Employee          │   Class name
+│        Employee         │   Class name
 ├─────────────────────────┤
-│ - name: String           │   Private attribute
-│ - salary: double         │   Private attribute
-│ # id: int                │   Protected attribute
+│ - name: String          │   Private attribute
+│ - salary: double        │   Private attribute
+│ # id: int               │   Protected attribute
 ├─────────────────────────┤
-│ + getName(): String      │   Public method
-│ + setSalary(d: double)   │   Public method
-│ - validate(): boolean    │   Private method
+│ + getName(): String     │   Public method
+│ + setSalary(d: double)  │   Public method
+│ - validate(): boolean   │   Private method
 └─────────────────────────┘
 
 Visibility:
@@ -309,19 +309,19 @@ Relationships:
 
 ```
         ┌───────────┐
-        │  Animal    │  (abstract)
+        │  Animal   │  (abstract)
         │───────────│
         │# name     │
         │───────────│
         │+ speak()  │  (abstract)
         └─────┬─────┘
               │ extends
-     ┌────────┴────────┐
-     │                 │
-┌────▼────┐     ┌──────▼──┐
-│   Dog    │     │   Cat    │
-│─────────│     │─────────│
-│─────────│     │─────────│
+     ┌────────┴─────────┐
+     │                  │
+┌────▼─────┐     ┌──────▼───┐
+│   Dog    │     │    Cat   │
+│──────────│     │──────────│
+│──────────│     │──────────│
 │+ speak() │     │+ speak() │
 └──────────┘     └──────────┘
 ```
